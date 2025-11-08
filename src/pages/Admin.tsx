@@ -31,16 +31,8 @@ import {
   CardContent,
   Alert,
   CircularProgress,
-  Input,
   useTheme,
-  useMediaQuery,
-  Collapse,
-  List,
-  ListItem,
-  ListItemText,
-  ListItemSecondaryAction,
-  Divider,
-  Stack
+  useMediaQuery
 } from '@mui/material';
 import {
   Logout,
@@ -48,10 +40,9 @@ import {
   Edit,
   Delete,
   PhotoCamera,
-  Visibility,
-  Save
+  Visibility
 } from '@mui/icons-material';
-import { useNavigate, Routes, Route } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import {
   authAPI,
   categoriesAPI,
@@ -85,7 +76,6 @@ const TabPanel: React.FC<TabPanelProps> = ({ children, value, index }) => (
 const Admin: React.FC = () => {
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('md'));
-  const isSmallMobile = useMediaQuery(theme.breakpoints.down('sm'));
   
   const [currentTab, setCurrentTab] = useState(0);
   const [categories, setCategories] = useState<Category[]>([]);
@@ -94,7 +84,6 @@ const Admin: React.FC = () => {
   const [analytics, setAnalytics] = useState<OrderAnalytics[]>([]);
   const [homeContent, setHomeContent] = useState<Content | null>(null);
   const [aboutContent, setAboutContent] = useState<Content | null>(null);
-  const [allContent, setAllContent] = useState<Content[]>([]);
   const [contactInfo, setContactInfo] = useState<any>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string>('');
