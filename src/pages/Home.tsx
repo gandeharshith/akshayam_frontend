@@ -236,7 +236,7 @@ const Home: React.FC = () => {
                     lineHeight: { xs: 1.5, md: 1.6 }
                   }}
                 >
-                  All our products are certified organic and sourced from trusted suppliers
+                  All our products are certified organic and are self products
                 </Typography>
               </Box>
             </Grid>
@@ -275,7 +275,7 @@ const Home: React.FC = () => {
                     mb: { xs: 1.5, md: 2 }
                   }}
                 >
-                  Fast Delivery
+                  Delivery Schedule
                 </Typography>
                 <Typography 
                   variant="body1"
@@ -284,7 +284,7 @@ const Home: React.FC = () => {
                     lineHeight: { xs: 1.5, md: 1.6 }
                   }}
                 >
-                  Quick and secure delivery to your doorstep with proper packaging
+                  Orders should be placed before every Wednesday 6 PM and the shipment will be delivered on Sunday
                 </Typography>
               </Box>
             </Grid>

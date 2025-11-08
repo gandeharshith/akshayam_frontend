@@ -31,7 +31,16 @@ import {
   CardContent,
   Alert,
   CircularProgress,
-  Input
+  Input,
+  useTheme,
+  useMediaQuery,
+  Collapse,
+  List,
+  ListItem,
+  ListItemText,
+  ListItemSecondaryAction,
+  Divider,
+  Stack
 } from '@mui/material';
 import {
   Logout,
@@ -74,6 +83,10 @@ const TabPanel: React.FC<TabPanelProps> = ({ children, value, index }) => (
 );
 
 const Admin: React.FC = () => {
+  const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down('md'));
+  const isSmallMobile = useMediaQuery(theme.breakpoints.down('sm'));
+  
   const [currentTab, setCurrentTab] = useState(0);
   const [categories, setCategories] = useState<Category[]>([]);
   const [products, setProducts] = useState<Product[]>([]);
@@ -354,17 +367,29 @@ const Admin: React.FC = () => {
         </Toolbar>
       </AppBar>
 
-      <Container maxWidth="xl" sx={{ mt: 3 }}>
+      <Container maxWidth="xl" sx={{ mt: isMobile ? 1 : 3, px: isMobile ? 1 : 3 }}>
         {error && <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>}
 
         {/* Navigation Tabs */}
         <Box sx={{ borderBottom: 1, borderColor: 'divider', mb: 2 }}>
-          <Tabs value={currentTab} onChange={(_, value) => setCurrentTab(value)}>
-            <Tab label="Categories" />
-            <Tab label="Products" />
-            <Tab label="Orders" />
-            <Tab label="Analytics" />
-            <Tab label="Content & Contact" />
+          <Tabs 
+            value={currentTab} 
+            onChange={(_, value) => setCurrentTab(value)}
+            variant={isMobile ? "scrollable" : "standard"}
+            scrollButtons={isMobile ? "auto" : false}
+            allowScrollButtonsMobile
+            sx={{
+              '& .MuiTab-root': {
+                minWidth: isMobile ? 80 : 160,
+                fontSize: isMobile ? '0.8rem' : '0.875rem'
+              }
+            }}
+          >
+            <Tab label={isMobile ? "Categories" : "Categories"} />
+            <Tab label={isMobile ? "Products" : "Products"} />
+            <Tab label={isMobile ? "Orders" : "Orders"} />
+            <Tab label={isMobile ? "Analytics" : "Analytics"} />
+            <Tab label={isMobile ? "Content" : "Content & Contact"} />
           </Tabs>
         </Box>
 
@@ -372,120 +397,104 @@ const Admin: React.FC = () => {
 
         {/* Categories Tab */}
         <TabPanel value={currentTab} index={0}>
-          <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 2 }}>
-            <Typography variant="h5">Categories Management</Typography>
+          <Box sx={{ 
+            display: 'flex', 
+            flexDirection: isMobile ? 'column' : 'row',
+            justifyContent: 'space-between', 
+            alignItems: isMobile ? 'stretch' : 'center',
+            mb: 2,
+            gap: isMobile ? 2 : 0 
+          }}>
+            <Typography variant={isMobile ? "h6" : "h5"}>Categories Management</Typography>
             <Button
               variant="contained"
               startIcon={<Add />}
               onClick={() => setCategoryDialogOpen(true)}
+              fullWidth={isMobile}
+              size={isMobile ? "large" : "medium"}
             >
               Add Category
             </Button>
           </Box>
 
-          <TableContainer component={Paper}>
-            <Table>
-              <TableHead>
-                <TableRow>
-                  <TableCell>Name</TableCell>
-                  <TableCell>Description</TableCell>
-                  <TableCell>Image</TableCell>
-                  <TableCell>Created</TableCell>
-                  <TableCell>Actions</TableCell>
-                </TableRow>
-              </TableHead>
-              <TableBody>
-                {categories.map((category) => (
-                  <TableRow key={category._id}>
-                    <TableCell>{category.name}</TableCell>
-                    <TableCell>{category.description}</TableCell>
-                    <TableCell>
-                      {category.image_url ? (
+          {isMobile ? (
+            // Mobile Card Layout
+            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+              {categories.map((category) => (
+                <Card key={category._id} elevation={2}>
+                  <CardContent>
+                    <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', mb: 2 }}>
+                      <Box sx={{ flex: 1 }}>
+                        <Typography variant="h6" gutterBottom>{category.name}</Typography>
+                        <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
+                          {category.description}
+                        </Typography>
+                        <Typography variant="caption" color="text.secondary">
+                          Created: {formatDate(category.created_at)}
+                        </Typography>
+                      </Box>
+                      {category.image_url && (
                         <img
-                            src={`${process.env.REACT_APP_API_URL || 'http://localhost:8000'}${category.image_url}`}
+                          src={`${process.env.REACT_APP_API_URL || 'http://localhost:8000'}${category.image_url}`}
                           alt={category.name}
-                          style={{ width: 50, height: 50, objectFit: 'cover' }}
+                          style={{ width: 60, height: 60, objectFit: 'cover', borderRadius: 8, marginLeft: 16 }}
                         />
-                      ) : (
-                        'No image'
                       )}
-                      <input
-                        type="file"
-                        accept="image/*"
-                        style={{ display: 'none' }}
-                        id={`category-image-${category._id}`}
-                        onChange={(e) => {
-                          const file = e.target.files?.[0];
-                          if (file) handleCategoryImageUpload(category._id, file);
-                        }}
-                      />
-                      <label htmlFor={`category-image-${category._id}`}>
-                        <IconButton component="span" size="small">
-                          <PhotoCamera />
-                        </IconButton>
-                      </label>
-                    </TableCell>
-                    <TableCell>{formatDate(category.created_at)}</TableCell>
-                    <TableCell>
-                      <IconButton onClick={() => editCategory(category)}>
-                        <Edit />
-                      </IconButton>
-                      <IconButton onClick={() => handleCategoryDelete(category._id)}>
-                        <Delete />
-                      </IconButton>
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          </TableContainer>
-        </TabPanel>
-
-        {/* Products Tab */}
-        <TabPanel value={currentTab} index={1}>
-          <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 2 }}>
-            <Typography variant="h5">Products Management</Typography>
-            <Button
-              variant="contained"
-              startIcon={<Add />}
-              onClick={() => setProductDialogOpen(true)}
-            >
-              Add Product
-            </Button>
-          </Box>
-
-          <TableContainer component={Paper}>
-            <Table>
-              <TableHead>
-                <TableRow>
-                  <TableCell>Name</TableCell>
-                  <TableCell>Category</TableCell>
-                  <TableCell>Price</TableCell>
-                  <TableCell>Quantity</TableCell>
-                  <TableCell>Image</TableCell>
-                  <TableCell>Actions</TableCell>
-                </TableRow>
-              </TableHead>
-              <TableBody>
-                {products.map((product) => {
-                  const category = categories.find(c => c._id === product.category_id);
-                  return (
-                    <TableRow key={product._id}>
-                      <TableCell>{product.name}</TableCell>
-                      <TableCell>{category?.name || 'Unknown'}</TableCell>
-                      <TableCell>₹{product.price}</TableCell>
-                      <TableCell>
-                        <Chip
-                          label={product.quantity}
-                          color={product.quantity > 0 ? 'success' : 'error'}
-                          size="small"
+                    </Box>
+                    <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                      <Box>
+                        <input
+                          type="file"
+                          accept="image/*"
+                          style={{ display: 'none' }}
+                          id={`category-image-${category._id}`}
+                          onChange={(e) => {
+                            const file = e.target.files?.[0];
+                            if (file) handleCategoryImageUpload(category._id, file);
+                          }}
                         />
-                      </TableCell>
+                        <label htmlFor={`category-image-${category._id}`}>
+                          <Button component="span" size="small" startIcon={<PhotoCamera />}>
+                            {category.image_url ? 'Change Image' : 'Add Image'}
+                          </Button>
+                        </label>
+                      </Box>
+                      <Box>
+                        <IconButton onClick={() => editCategory(category)} color="primary">
+                          <Edit />
+                        </IconButton>
+                        <IconButton onClick={() => handleCategoryDelete(category._id)} color="error">
+                          <Delete />
+                        </IconButton>
+                      </Box>
+                    </Box>
+                  </CardContent>
+                </Card>
+              ))}
+            </Box>
+          ) : (
+            // Desktop Table Layout
+            <TableContainer component={Paper}>
+              <Table>
+                <TableHead>
+                  <TableRow>
+                    <TableCell>Name</TableCell>
+                    <TableCell>Description</TableCell>
+                    <TableCell>Image</TableCell>
+                    <TableCell>Created</TableCell>
+                    <TableCell>Actions</TableCell>
+                  </TableRow>
+                </TableHead>
+                <TableBody>
+                  {categories.map((category) => (
+                    <TableRow key={category._id}>
+                      <TableCell>{category.name}</TableCell>
+                      <TableCell>{category.description}</TableCell>
                       <TableCell>
-                        {product.image_url ? (
+                        {category.image_url ? (
                           <img
-                            src={`${process.env.REACT_APP_API_URL || 'http://localhost:8000'}${product.image_url}`}
-                            alt={product.name}
+                              src={`${process.env.REACT_APP_API_URL || 'http://localhost:8000'}${category.image_url}`}
+                            alt={category.name}
                             style={{ width: 50, height: 50, objectFit: 'cover' }}
                           />
                         ) : (
@@ -495,66 +504,242 @@ const Admin: React.FC = () => {
                           type="file"
                           accept="image/*"
                           style={{ display: 'none' }}
-                          id={`product-image-${product._id}`}
+                          id={`category-image-${category._id}`}
                           onChange={(e) => {
                             const file = e.target.files?.[0];
-                            if (file) handleProductImageUpload(product._id, file);
+                            if (file) handleCategoryImageUpload(category._id, file);
                           }}
                         />
-                        <label htmlFor={`product-image-${product._id}`}>
+                        <label htmlFor={`category-image-${category._id}`}>
                           <IconButton component="span" size="small">
                             <PhotoCamera />
                           </IconButton>
                         </label>
                       </TableCell>
+                      <TableCell>{formatDate(category.created_at)}</TableCell>
                       <TableCell>
-                        <IconButton onClick={() => editProduct(product)}>
+                        <IconButton onClick={() => editCategory(category)}>
                           <Edit />
                         </IconButton>
-                        <IconButton onClick={() => handleProductDelete(product._id)}>
+                        <IconButton onClick={() => handleCategoryDelete(category._id)}>
                           <Delete />
                         </IconButton>
                       </TableCell>
                     </TableRow>
-                  );
-                })}
-              </TableBody>
-            </Table>
-          </TableContainer>
+                  ))}
+                </TableBody>
+              </Table>
+            </TableContainer>
+          )}
+        </TabPanel>
+
+        {/* Products Tab */}
+        <TabPanel value={currentTab} index={1}>
+          <Box sx={{ 
+            display: 'flex', 
+            flexDirection: isMobile ? 'column' : 'row',
+            justifyContent: 'space-between', 
+            alignItems: isMobile ? 'stretch' : 'center',
+            mb: 2,
+            gap: isMobile ? 2 : 0 
+          }}>
+            <Typography variant={isMobile ? "h6" : "h5"}>Products Management</Typography>
+            <Button
+              variant="contained"
+              startIcon={<Add />}
+              onClick={() => setProductDialogOpen(true)}
+              fullWidth={isMobile}
+              size={isMobile ? "large" : "medium"}
+            >
+              Add Product
+            </Button>
+          </Box>
+
+          {isMobile ? (
+            // Mobile Card Layout
+            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+              {products.map((product) => {
+                const category = categories.find(c => c._id === product.category_id);
+                return (
+                  <Card key={product._id} elevation={2}>
+                    <CardContent>
+                      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', mb: 2 }}>
+                        <Box sx={{ flex: 1 }}>
+                          <Typography variant="h6" gutterBottom>{product.name}</Typography>
+                          <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
+                            Category: {category?.name || 'Unknown'}
+                          </Typography>
+                          <Typography variant="body2" sx={{ mb: 1 }}>
+                            <strong>Price:</strong> ₹{product.price}
+                          </Typography>
+                          <Chip
+                            label={`Stock: ${product.quantity}`}
+                            color={product.quantity > 0 ? 'success' : 'error'}
+                            size="small"
+                            sx={{ mb: 1 }}
+                          />
+                          <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
+                            {product.description.length > 100 
+                              ? `${product.description.substring(0, 100)}...` 
+                              : product.description}
+                          </Typography>
+                        </Box>
+                        {product.image_url && (
+                          <img
+                            src={`${process.env.REACT_APP_API_URL || 'http://localhost:8000'}${product.image_url}`}
+                            alt={product.name}
+                            style={{ width: 60, height: 60, objectFit: 'cover', borderRadius: 8, marginLeft: 16 }}
+                          />
+                        )}
+                      </Box>
+                      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                        <Box>
+                          <input
+                            type="file"
+                            accept="image/*"
+                            style={{ display: 'none' }}
+                            id={`product-image-${product._id}`}
+                            onChange={(e) => {
+                              const file = e.target.files?.[0];
+                              if (file) handleProductImageUpload(product._id, file);
+                            }}
+                          />
+                          <label htmlFor={`product-image-${product._id}`}>
+                            <Button component="span" size="small" startIcon={<PhotoCamera />}>
+                              {product.image_url ? 'Change Image' : 'Add Image'}
+                            </Button>
+                          </label>
+                        </Box>
+                        <Box>
+                          <IconButton onClick={() => editProduct(product)} color="primary">
+                            <Edit />
+                          </IconButton>
+                          <IconButton onClick={() => handleProductDelete(product._id)} color="error">
+                            <Delete />
+                          </IconButton>
+                        </Box>
+                      </Box>
+                    </CardContent>
+                  </Card>
+                );
+              })}
+            </Box>
+          ) : (
+            // Desktop Table Layout
+            <TableContainer component={Paper}>
+              <Table>
+                <TableHead>
+                  <TableRow>
+                    <TableCell>Name</TableCell>
+                    <TableCell>Category</TableCell>
+                    <TableCell>Price</TableCell>
+                    <TableCell>Quantity</TableCell>
+                    <TableCell>Image</TableCell>
+                    <TableCell>Actions</TableCell>
+                  </TableRow>
+                </TableHead>
+                <TableBody>
+                  {products.map((product) => {
+                    const category = categories.find(c => c._id === product.category_id);
+                    return (
+                      <TableRow key={product._id}>
+                        <TableCell>{product.name}</TableCell>
+                        <TableCell>{category?.name || 'Unknown'}</TableCell>
+                        <TableCell>₹{product.price}</TableCell>
+                        <TableCell>
+                          <Chip
+                            label={product.quantity}
+                            color={product.quantity > 0 ? 'success' : 'error'}
+                            size="small"
+                          />
+                        </TableCell>
+                        <TableCell>
+                          {product.image_url ? (
+                            <img
+                              src={`${process.env.REACT_APP_API_URL || 'http://localhost:8000'}${product.image_url}`}
+                              alt={product.name}
+                              style={{ width: 50, height: 50, objectFit: 'cover' }}
+                            />
+                          ) : (
+                            'No image'
+                          )}
+                          <input
+                            type="file"
+                            accept="image/*"
+                            style={{ display: 'none' }}
+                            id={`product-image-${product._id}`}
+                            onChange={(e) => {
+                              const file = e.target.files?.[0];
+                              if (file) handleProductImageUpload(product._id, file);
+                            }}
+                          />
+                          <label htmlFor={`product-image-${product._id}`}>
+                            <IconButton component="span" size="small">
+                              <PhotoCamera />
+                            </IconButton>
+                          </label>
+                        </TableCell>
+                        <TableCell>
+                          <IconButton onClick={() => editProduct(product)}>
+                            <Edit />
+                          </IconButton>
+                          <IconButton onClick={() => handleProductDelete(product._id)}>
+                            <Delete />
+                          </IconButton>
+                        </TableCell>
+                      </TableRow>
+                    );
+                  })}
+                </TableBody>
+              </Table>
+            </TableContainer>
+          )}
         </TabPanel>
 
         {/* Orders Tab */}
         <TabPanel value={currentTab} index={2}>
-          <Typography variant="h5" sx={{ mb: 2 }}>Orders Management</Typography>
+          <Typography variant={isMobile ? "h6" : "h5"} sx={{ mb: 2 }}>Orders Management</Typography>
           
-          <TableContainer component={Paper}>
-            <Table>
-              <TableHead>
-                <TableRow>
-                  <TableCell>Order ID</TableCell>
-                  <TableCell>Customer</TableCell>
-                  <TableCell>Items</TableCell>
-                  <TableCell>Total</TableCell>
-                  <TableCell>Status</TableCell>
-                  <TableCell>Date</TableCell>
-                  <TableCell>Actions</TableCell>
-                </TableRow>
-              </TableHead>
-              <TableBody>
-                {orders.map((order) => (
-                  <TableRow key={order._id}>
-                    <TableCell>#{order._id.slice(-8).toUpperCase()}</TableCell>
-                    <TableCell>
-                      <div>{order.user_name}</div>
-                      <div style={{ fontSize: '0.8em', color: 'gray' }}>{order.user_email}</div>
-                    </TableCell>
-                    <TableCell>{order.items.length} items</TableCell>
-                    <TableCell>₹{order.total_amount.toFixed(2)}</TableCell>
-                    <TableCell>
+          {isMobile ? (
+            // Mobile Card Layout
+            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+              {orders.map((order) => (
+                <Card key={order._id} elevation={2}>
+                  <CardContent>
+                    <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', mb: 2 }}>
+                      <Box sx={{ flex: 1 }}>
+                        <Typography variant="h6" gutterBottom>
+                          Order #{order._id.slice(-8).toUpperCase()}
+                        </Typography>
+                        <Typography variant="body2" sx={{ mb: 1 }}>
+                          <strong>Customer:</strong> {order.user_name}
+                        </Typography>
+                        <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
+                          {order.user_email}
+                        </Typography>
+                        <Typography variant="body2" sx={{ mb: 1 }}>
+                          <strong>Items:</strong> {order.items.length} items
+                        </Typography>
+                        <Typography variant="body2" sx={{ mb: 1 }}>
+                          <strong>Total:</strong> ₹{order.total_amount.toFixed(2)}
+                        </Typography>
+                        <Typography variant="caption" color="text.secondary">
+                          {formatDate(order.created_at)}
+                        </Typography>
+                      </Box>
+                      <Chip
+                        label={order.status.charAt(0).toUpperCase() + order.status.slice(1)}
+                        color={getStatusColor(order.status) as any}
+                        size="small"
+                      />
+                    </Box>
+                    <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mt: 2 }}>
                       <FormControl size="small" sx={{ minWidth: 120 }}>
+                        <InputLabel>Status</InputLabel>
                         <Select
                           value={order.status}
                           onChange={(e) => handleOrderStatusUpdate(order._id, e.target.value)}
+                          label="Status"
                         >
                           <MenuItem value="pending">Pending</MenuItem>
                           <MenuItem value="confirmed">Confirmed</MenuItem>
@@ -563,47 +748,110 @@ const Admin: React.FC = () => {
                           <MenuItem value="cancelled">Cancelled</MenuItem>
                         </Select>
                       </FormControl>
-                    </TableCell>
-                    <TableCell>{formatDate(order.created_at)}</TableCell>
-                    <TableCell>
-                      <IconButton 
-                        onClick={() => {
-                          setSelectedOrder(order);
-                          setOrderDetailsOpen(true);
-                        }}
-                        title="View Details"
-                      >
-                        <Visibility />
-                      </IconButton>
-                      <IconButton onClick={() => handleOrderDelete(order._id)} title="Delete Order">
-                        <Delete />
-                      </IconButton>
-                    </TableCell>
+                      <Box>
+                        <IconButton 
+                          onClick={() => {
+                            setSelectedOrder(order);
+                            setOrderDetailsOpen(true);
+                          }}
+                          color="primary"
+                          title="View Details"
+                        >
+                          <Visibility />
+                        </IconButton>
+                        <IconButton 
+                          onClick={() => handleOrderDelete(order._id)} 
+                          color="error"
+                          title="Delete Order"
+                        >
+                          <Delete />
+                        </IconButton>
+                      </Box>
+                    </Box>
+                  </CardContent>
+                </Card>
+              ))}
+            </Box>
+          ) : (
+            // Desktop Table Layout
+            <TableContainer component={Paper}>
+              <Table>
+                <TableHead>
+                  <TableRow>
+                    <TableCell>Order ID</TableCell>
+                    <TableCell>Customer</TableCell>
+                    <TableCell>Items</TableCell>
+                    <TableCell>Total</TableCell>
+                    <TableCell>Status</TableCell>
+                    <TableCell>Date</TableCell>
+                    <TableCell>Actions</TableCell>
                   </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          </TableContainer>
+                </TableHead>
+                <TableBody>
+                  {orders.map((order) => (
+                    <TableRow key={order._id}>
+                      <TableCell>#{order._id.slice(-8).toUpperCase()}</TableCell>
+                      <TableCell>
+                        <div>{order.user_name}</div>
+                        <div style={{ fontSize: '0.8em', color: 'gray' }}>{order.user_email}</div>
+                      </TableCell>
+                      <TableCell>{order.items.length} items</TableCell>
+                      <TableCell>₹{order.total_amount.toFixed(2)}</TableCell>
+                      <TableCell>
+                        <FormControl size="small" sx={{ minWidth: 120 }}>
+                          <Select
+                            value={order.status}
+                            onChange={(e) => handleOrderStatusUpdate(order._id, e.target.value)}
+                          >
+                            <MenuItem value="pending">Pending</MenuItem>
+                            <MenuItem value="confirmed">Confirmed</MenuItem>
+                            <MenuItem value="shipped">Shipped</MenuItem>
+                            <MenuItem value="delivered">Delivered</MenuItem>
+                            <MenuItem value="cancelled">Cancelled</MenuItem>
+                          </Select>
+                        </FormControl>
+                      </TableCell>
+                      <TableCell>{formatDate(order.created_at)}</TableCell>
+                      <TableCell>
+                        <IconButton 
+                          onClick={() => {
+                            setSelectedOrder(order);
+                            setOrderDetailsOpen(true);
+                          }}
+                          title="View Details"
+                        >
+                          <Visibility />
+                        </IconButton>
+                        <IconButton onClick={() => handleOrderDelete(order._id)} title="Delete Order">
+                          <Delete />
+                        </IconButton>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </TableContainer>
+          )}
         </TabPanel>
 
         {/* Analytics Tab */}
         <TabPanel value={currentTab} index={3}>
-          <Typography variant="h5" sx={{ mb: 2 }}>Analytics</Typography>
+          <Typography variant={isMobile ? "h6" : "h5"} sx={{ mb: 2 }}>Analytics</Typography>
           
-          <Grid container spacing={3}>
-            <Grid item xs={12} md={6}>
+          <Grid container spacing={isMobile ? 2 : 3}>
+            <Grid item xs={12} sm={6}>
               <Card>
-                <CardContent>
+                <CardContent sx={{ textAlign: 'center' }}>
                   <Typography variant="h6" gutterBottom>Total Orders</Typography>
-                  <Typography variant="h3" color="primary">{orders.length}</Typography>
+                  <Typography variant={isMobile ? "h4" : "h3"} color="primary">{orders.length}</Typography>
                 </CardContent>
               </Card>
             </Grid>
-            <Grid item xs={12} md={6}>
+            <Grid item xs={12} sm={6}>
               <Card>
-                <CardContent>
+                <CardContent sx={{ textAlign: 'center' }}>
                   <Typography variant="h6" gutterBottom>Total Revenue</Typography>
-                  <Typography variant="h3" color="primary">
+                  <Typography variant={isMobile ? "h4" : "h3"} color="primary">
                     ₹{orders.reduce((sum, order) => sum + order.total_amount, 0).toFixed(2)}
                   </Typography>
                 </CardContent>
@@ -612,41 +860,74 @@ const Admin: React.FC = () => {
           </Grid>
 
           <Typography variant="h6" sx={{ mt: 4, mb: 2 }}>Product Sales Analytics</Typography>
-          <TableContainer component={Paper}>
-            <Table>
-              <TableHead>
-                <TableRow>
-                  <TableCell>Product Name</TableCell>
-                  <TableCell>Total Quantity Sold</TableCell>
-                  <TableCell>Total Revenue</TableCell>
-                </TableRow>
-              </TableHead>
-              <TableBody>
-                {analytics.map((item) => (
-                  <TableRow key={item.product_id}>
-                    <TableCell>{item.product_name}</TableCell>
-                    <TableCell>{item.total_quantity}</TableCell>
-                    <TableCell>₹{item.total_revenue.toFixed(2)}</TableCell>
+          {isMobile ? (
+            // Mobile Card Layout
+            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+              {analytics.map((item) => (
+                <Card key={item.product_id} elevation={1}>
+                  <CardContent>
+                    <Typography variant="h6" gutterBottom>{item.product_name}</Typography>
+                    <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                      <Box>
+                        <Typography variant="body2" color="text.secondary">Quantity Sold</Typography>
+                        <Typography variant="h6">{item.total_quantity}</Typography>
+                      </Box>
+                      <Box sx={{ textAlign: 'right' }}>
+                        <Typography variant="body2" color="text.secondary">Revenue</Typography>
+                        <Typography variant="h6" color="primary">₹{item.total_revenue.toFixed(2)}</Typography>
+                      </Box>
+                    </Box>
+                  </CardContent>
+                </Card>
+              ))}
+            </Box>
+          ) : (
+            // Desktop Table Layout
+            <TableContainer component={Paper}>
+              <Table>
+                <TableHead>
+                  <TableRow>
+                    <TableCell>Product Name</TableCell>
+                    <TableCell>Total Quantity Sold</TableCell>
+                    <TableCell>Total Revenue</TableCell>
                   </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          </TableContainer>
+                </TableHead>
+                <TableBody>
+                  {analytics.map((item) => (
+                    <TableRow key={item.product_id}>
+                      <TableCell>{item.product_name}</TableCell>
+                      <TableCell>{item.total_quantity}</TableCell>
+                      <TableCell>₹{item.total_revenue.toFixed(2)}</TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </TableContainer>
+          )}
         </TabPanel>
 
         {/* Content & Contact Management Tab */}
         <TabPanel value={currentTab} index={4}>
-          <Typography variant="h5" sx={{ mb: 3 }}>Content & Contact Management</Typography>
+          <Typography variant={isMobile ? "h6" : "h5"} sx={{ mb: 3 }}>Content & Contact Management</Typography>
           
           {/* Contact Information Section */}
           <Card sx={{ mb: 4 }}>
             <CardContent>
-              <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
+              <Box sx={{ 
+                display: 'flex', 
+                flexDirection: isMobile ? 'column' : 'row',
+                justifyContent: 'space-between', 
+                alignItems: isMobile ? 'stretch' : 'center',
+                mb: 3,
+                gap: isMobile ? 2 : 0 
+              }}>
                 <Typography variant="h6">Contact Information</Typography>
                 <Button
                   variant="contained"
                   color="primary"
                   startIcon={<Edit />}
+                  fullWidth={isMobile}
+                  size={isMobile ? "large" : "medium"}
                   onClick={async () => {
                     try {
                       const contact = await contactAPI.get();
@@ -843,9 +1124,15 @@ const Admin: React.FC = () => {
       </Container>
 
       {/* Category Dialog */}
-      <Dialog open={categoryDialogOpen} onClose={() => setCategoryDialogOpen(false)} maxWidth="sm" fullWidth>
+      <Dialog 
+        open={categoryDialogOpen} 
+        onClose={() => setCategoryDialogOpen(false)} 
+        maxWidth="sm" 
+        fullWidth
+        fullScreen={isMobile}
+      >
         <DialogTitle>{editingCategory ? 'Edit Category' : 'Add Category'}</DialogTitle>
-        <DialogContent>
+        <DialogContent sx={{ pb: isMobile ? 2 : 1 }}>
           <TextField
             fullWidth
             label="Category Name"
@@ -857,23 +1144,44 @@ const Admin: React.FC = () => {
             fullWidth
             label="Description"
             multiline
-            rows={3}
+            rows={isMobile ? 4 : 3}
             value={categoryForm.description}
             onChange={(e) => setCategoryForm({ ...categoryForm, description: e.target.value })}
           />
         </DialogContent>
-        <DialogActions>
-          <Button onClick={() => setCategoryDialogOpen(false)}>Cancel</Button>
-          <Button onClick={handleCategorySubmit} variant="contained">
+        <DialogActions sx={{ 
+          flexDirection: isMobile ? 'column' : 'row',
+          gap: isMobile ? 1 : 0,
+          p: isMobile ? 2 : 1
+        }}>
+          <Button 
+            onClick={() => setCategoryDialogOpen(false)}
+            fullWidth={isMobile}
+            size={isMobile ? "large" : "medium"}
+          >
+            Cancel
+          </Button>
+          <Button 
+            onClick={handleCategorySubmit} 
+            variant="contained"
+            fullWidth={isMobile}
+            size={isMobile ? "large" : "medium"}
+          >
             {editingCategory ? 'Update' : 'Create'}
           </Button>
         </DialogActions>
       </Dialog>
 
       {/* Product Dialog */}
-      <Dialog open={productDialogOpen} onClose={() => setProductDialogOpen(false)} maxWidth="sm" fullWidth>
+      <Dialog 
+        open={productDialogOpen} 
+        onClose={() => setProductDialogOpen(false)} 
+        maxWidth="sm" 
+        fullWidth
+        fullScreen={isMobile}
+      >
         <DialogTitle>{editingProduct ? 'Edit Product' : 'Add Product'}</DialogTitle>
-        <DialogContent>
+        <DialogContent sx={{ pb: isMobile ? 2 : 1 }}>
           <TextField
             fullWidth
             label="Product Name"
@@ -885,7 +1193,7 @@ const Admin: React.FC = () => {
             fullWidth
             label="Description"
             multiline
-            rows={3}
+            rows={isMobile ? 4 : 3}
             value={productForm.description}
             onChange={(e) => setProductForm({ ...productForm, description: e.target.value })}
             sx={{ mb: 2 }}
@@ -903,34 +1211,56 @@ const Admin: React.FC = () => {
               ))}
             </Select>
           </FormControl>
-          <TextField
-            fullWidth
-            label="Price"
-            type="number"
-            value={productForm.price}
-            onChange={(e) => setProductForm({ ...productForm, price: parseFloat(e.target.value) })}
-            sx={{ mb: 2 }}
-          />
-          <TextField
-            fullWidth
-            label="Quantity"
-            type="number"
-            value={productForm.quantity}
-            onChange={(e) => setProductForm({ ...productForm, quantity: parseInt(e.target.value) })}
-          />
+          <Box sx={{ display: 'flex', gap: 2, flexDirection: isMobile ? 'column' : 'row' }}>
+            <TextField
+              fullWidth
+              label="Price"
+              type="number"
+              value={productForm.price}
+              onChange={(e) => setProductForm({ ...productForm, price: parseFloat(e.target.value) })}
+            />
+            <TextField
+              fullWidth
+              label="Quantity"
+              type="number"
+              value={productForm.quantity}
+              onChange={(e) => setProductForm({ ...productForm, quantity: parseInt(e.target.value) })}
+            />
+          </Box>
         </DialogContent>
-        <DialogActions>
-          <Button onClick={() => setProductDialogOpen(false)}>Cancel</Button>
-          <Button onClick={handleProductSubmit} variant="contained">
+        <DialogActions sx={{ 
+          flexDirection: isMobile ? 'column' : 'row',
+          gap: isMobile ? 1 : 0,
+          p: isMobile ? 2 : 1
+        }}>
+          <Button 
+            onClick={() => setProductDialogOpen(false)}
+            fullWidth={isMobile}
+            size={isMobile ? "large" : "medium"}
+          >
+            Cancel
+          </Button>
+          <Button 
+            onClick={handleProductSubmit} 
+            variant="contained"
+            fullWidth={isMobile}
+            size={isMobile ? "large" : "medium"}
+          >
             {editingProduct ? 'Update' : 'Create'}
           </Button>
         </DialogActions>
       </Dialog>
 
       {/* Content Dialog */}
-      <Dialog open={contentDialogOpen} onClose={() => setContentDialogOpen(false)} maxWidth="md" fullWidth>
+      <Dialog 
+        open={contentDialogOpen} 
+        onClose={() => setContentDialogOpen(false)} 
+        maxWidth="md" 
+        fullWidth
+        fullScreen={isMobile}
+      >
         <DialogTitle>Edit {editingContent?.page} Page Content</DialogTitle>
-        <DialogContent>
+        <DialogContent sx={{ pb: isMobile ? 2 : 1 }}>
           <TextField
             fullWidth
             label="Title"
@@ -942,33 +1272,57 @@ const Admin: React.FC = () => {
             fullWidth
             label="Content"
             multiline
-            rows={6}
+            rows={isMobile ? 8 : 6}
             value={contentForm.content}
             onChange={(e) => setContentForm({ ...contentForm, content: e.target.value })}
           />
         </DialogContent>
-        <DialogActions>
-          <Button onClick={() => setContentDialogOpen(false)}>Cancel</Button>
-          <Button onClick={handleContentSubmit} variant="contained">
+        <DialogActions sx={{ 
+          flexDirection: isMobile ? 'column' : 'row',
+          gap: isMobile ? 1 : 0,
+          p: isMobile ? 2 : 1
+        }}>
+          <Button 
+            onClick={() => setContentDialogOpen(false)}
+            fullWidth={isMobile}
+            size={isMobile ? "large" : "medium"}
+          >
+            Cancel
+          </Button>
+          <Button 
+            onClick={handleContentSubmit} 
+            variant="contained"
+            fullWidth={isMobile}
+            size={isMobile ? "large" : "medium"}
+          >
             Update Content
           </Button>
         </DialogActions>
       </Dialog>
 
       {/* Order Details Dialog */}
-      <Dialog open={orderDetailsOpen} onClose={() => setOrderDetailsOpen(false)} maxWidth="md" fullWidth>
-        <DialogTitle>
-          Order Details - #{selectedOrder?._id.slice(-8).toUpperCase()}
-          <Chip
-            label={selectedOrder?.status ? selectedOrder.status.charAt(0).toUpperCase() + selectedOrder.status.slice(1) : 'Unknown'}
-            color={getStatusColor(selectedOrder?.status || '') as any}
-            size="small"
-            sx={{ ml: 2 }}
-          />
+      <Dialog 
+        open={orderDetailsOpen} 
+        onClose={() => setOrderDetailsOpen(false)} 
+        maxWidth="md" 
+        fullWidth
+        fullScreen={isMobile}
+      >
+        <DialogTitle sx={{ pb: 1 }}>
+          <Box sx={{ display: 'flex', flexDirection: isMobile ? 'column' : 'row', alignItems: isMobile ? 'flex-start' : 'center', gap: 1 }}>
+            <Typography variant="h6" component="span">
+              Order Details - #{selectedOrder?._id.slice(-8).toUpperCase()}
+            </Typography>
+            <Chip
+              label={selectedOrder?.status ? selectedOrder.status.charAt(0).toUpperCase() + selectedOrder.status.slice(1) : 'Unknown'}
+              color={getStatusColor(selectedOrder?.status || '') as any}
+              size="small"
+            />
+          </Box>
         </DialogTitle>
         <DialogContent>
           {selectedOrder && (
-            <Grid container spacing={3}>
+            <Grid container spacing={isMobile ? 2 : 3}>
               <Grid item xs={12} md={6}>
                 <Typography variant="h6" gutterBottom>Customer Information</Typography>
                 <Typography variant="body2" sx={{ mb: 1 }}>
@@ -998,27 +1352,36 @@ const Admin: React.FC = () => {
               
               <Grid item xs={12} md={6}>
                 <Typography variant="h6" gutterBottom>Order Items ({selectedOrder.items.length})</Typography>
-                <TableContainer component={Paper} sx={{ maxHeight: 300 }}>
+                <TableContainer component={Paper} sx={{ maxHeight: isMobile ? 400 : 300 }}>
                   <Table size="small">
                     <TableHead>
                       <TableRow>
                         <TableCell>Product</TableCell>
                         <TableCell align="center">Qty</TableCell>
-                        <TableCell align="right">Price</TableCell>
+                        {!isMobile && <TableCell align="right">Price</TableCell>}
                         <TableCell align="right">Total</TableCell>
                       </TableRow>
                     </TableHead>
                     <TableBody>
                       {selectedOrder.items.map((item, index) => (
                         <TableRow key={index}>
-                          <TableCell>{item.product_name}</TableCell>
+                          <TableCell>
+                            <Typography variant="body2" sx={{ fontWeight: 'medium' }}>
+                              {item.product_name}
+                            </Typography>
+                            {isMobile && (
+                              <Typography variant="caption" color="text.secondary">
+                                ₹{item.price.toFixed(2)} each
+                              </Typography>
+                            )}
+                          </TableCell>
                           <TableCell align="center">{item.quantity}</TableCell>
-                          <TableCell align="right">₹{item.price.toFixed(2)}</TableCell>
+                          {!isMobile && <TableCell align="right">₹{item.price.toFixed(2)}</TableCell>}
                           <TableCell align="right">₹{item.total.toFixed(2)}</TableCell>
                         </TableRow>
                       ))}
                       <TableRow>
-                        <TableCell colSpan={3}>
+                        <TableCell colSpan={isMobile ? 2 : 3}>
                           <Typography variant="h6">Total:</Typography>
                         </TableCell>
                         <TableCell align="right">
@@ -1032,10 +1395,20 @@ const Admin: React.FC = () => {
             </Grid>
           )}
         </DialogContent>
-        <DialogActions>
-          <Button onClick={() => setOrderDetailsOpen(false)}>Close</Button>
+        <DialogActions sx={{ 
+          flexDirection: isMobile ? 'column' : 'row',
+          gap: isMobile ? 1 : 0,
+          p: isMobile ? 2 : 1,
+          alignItems: isMobile ? 'stretch' : 'center'
+        }}>
           {selectedOrder && (
-            <FormControl sx={{ minWidth: 120, mr: 2 }}>
+            <FormControl 
+              sx={{ 
+                minWidth: 120,
+                width: isMobile ? '100%' : 'auto',
+                order: isMobile ? 1 : 2
+              }}
+            >
               <InputLabel>Status</InputLabel>
               <Select
                 value={selectedOrder.status}
@@ -1044,6 +1417,7 @@ const Admin: React.FC = () => {
                   setSelectedOrder({ ...selectedOrder, status: e.target.value });
                 }}
                 size="small"
+                label="Status"
               >
                 <MenuItem value="pending">Pending</MenuItem>
                 <MenuItem value="confirmed">Confirmed</MenuItem>
@@ -1053,13 +1427,27 @@ const Admin: React.FC = () => {
               </Select>
             </FormControl>
           )}
+          <Button 
+            onClick={() => setOrderDetailsOpen(false)}
+            fullWidth={isMobile}
+            size={isMobile ? "large" : "medium"}
+            sx={{ order: isMobile ? 2 : 1 }}
+          >
+            Close
+          </Button>
         </DialogActions>
       </Dialog>
 
       {/* Contact Information Dialog */}
-      <Dialog open={contactDialogOpen} onClose={() => setContactDialogOpen(false)} maxWidth="sm" fullWidth>
+      <Dialog 
+        open={contactDialogOpen} 
+        onClose={() => setContactDialogOpen(false)} 
+        maxWidth="sm" 
+        fullWidth
+        fullScreen={isMobile}
+      >
         <DialogTitle>Edit Contact Information</DialogTitle>
-        <DialogContent>
+        <DialogContent sx={{ pb: isMobile ? 2 : 1 }}>
           <TextField
             fullWidth
             label="Company Name"
@@ -1071,7 +1459,7 @@ const Admin: React.FC = () => {
             fullWidth
             label="Company Description"
             multiline
-            rows={3}
+            rows={isMobile ? 4 : 3}
             value={contactForm.company_description}
             onChange={(e) => setContactForm({ ...contactForm, company_description: e.target.value })}
             sx={{ mb: 2 }}
@@ -1095,14 +1483,29 @@ const Admin: React.FC = () => {
             fullWidth
             label="Address"
             multiline
-            rows={2}
+            rows={isMobile ? 3 : 2}
             value={contactForm.address}
             onChange={(e) => setContactForm({ ...contactForm, address: e.target.value })}
           />
         </DialogContent>
-        <DialogActions>
-          <Button onClick={() => setContactDialogOpen(false)}>Cancel</Button>
-          <Button onClick={handleContactSubmit} variant="contained">
+        <DialogActions sx={{ 
+          flexDirection: isMobile ? 'column' : 'row',
+          gap: isMobile ? 1 : 0,
+          p: isMobile ? 2 : 1
+        }}>
+          <Button 
+            onClick={() => setContactDialogOpen(false)}
+            fullWidth={isMobile}
+            size={isMobile ? "large" : "medium"}
+          >
+            Cancel
+          </Button>
+          <Button 
+            onClick={handleContactSubmit} 
+            variant="contained"
+            fullWidth={isMobile}
+            size={isMobile ? "large" : "medium"}
+          >
             Update Contact Info
           </Button>
         </DialogActions>

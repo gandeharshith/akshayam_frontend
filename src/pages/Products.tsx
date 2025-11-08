@@ -26,13 +26,16 @@ import {
   CircularProgress,
   Alert,
   Chip,
-  IconButton
+  IconButton,
+  InputAdornment
 } from '@mui/material';
 import {
   Add,
   Remove,
   ShoppingCart,
-  Close
+  Close,
+  Search,
+  Clear
 } from '@mui/icons-material';
 import { useSearchParams } from 'react-router-dom';
 import { productsAPI, categoriesAPI, ordersAPI } from '../services/api';
@@ -41,8 +44,10 @@ import { Product, Category, User, OrderItem } from '../types';
 
 const Products: React.FC = () => {
   const [products, setProducts] = useState<Product[]>([]);
+  const [allProducts, setAllProducts] = useState<Product[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
   const [selectedCategory, setSelectedCategory] = useState<string>('');
+  const [searchTerm, setSearchTerm] = useState<string>('');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string>('');
   const [cartOpen, setCartOpen] = useState(false);
@@ -74,6 +79,7 @@ const Products: React.FC = () => {
           productsAPI.getAll()
         ]);
         setCategories(categoriesData);
+        setAllProducts(productsData);
         setProducts(productsData);
 
         // Set category from URL params if provided
@@ -93,28 +99,28 @@ const Products: React.FC = () => {
   }, [searchParams]);
 
   useEffect(() => {
-    const fetchFilteredProducts = async () => {
+    const filterProducts = () => {
+      let filteredProducts = [...allProducts];
+
+      // Filter by category
       if (selectedCategory) {
-        try {
-          const filteredProducts = await productsAPI.getAll(selectedCategory);
-          setProducts(filteredProducts);
-        } catch (err) {
-          console.error('Error filtering products:', err);
-        }
-      } else {
-        try {
-          const allProducts = await productsAPI.getAll();
-          setProducts(allProducts);
-        } catch (err) {
-          console.error('Error fetching all products:', err);
-        }
+        filteredProducts = filteredProducts.filter(product => product.category_id === selectedCategory);
       }
+
+      // Filter by search term
+      if (searchTerm.trim()) {
+        const searchLower = searchTerm.toLowerCase().trim();
+        filteredProducts = filteredProducts.filter(product =>
+          product.name.toLowerCase().includes(searchLower) ||
+          product.description.toLowerCase().includes(searchLower)
+        );
+      }
+
+      setProducts(filteredProducts);
     };
 
-    if (!loading) {
-      fetchFilteredProducts();
-    }
-  }, [selectedCategory, loading]);
+    filterProducts();
+  }, [selectedCategory, searchTerm, allProducts]);
 
   const handleAddToCart = (product: Product) => {
     if (product.quantity > 0) {
@@ -207,35 +213,123 @@ const Products: React.FC = () => {
         </Button>
       </Box>
 
-      {/* Filter Section */}
+      {/* Filter and Search Section */}
       <Box sx={{ mb: { xs: 3, md: 4 } }}>
-        <FormControl 
-          sx={{ 
-            minWidth: { xs: '100%', sm: 250 },
-            maxWidth: { xs: '100%', sm: 300 }
-          }}
-        >
-          <InputLabel>Filter by Category</InputLabel>
-          <Select
-            value={selectedCategory}
-            label="Filter by Category"
-            onChange={(e) => setSelectedCategory(e.target.value)}
-            size={window.innerWidth < 600 ? "medium" : "medium"}
-          >
-            <MenuItem value="">All Categories</MenuItem>
-            {categories.map((category) => (
-              <MenuItem key={category._id} value={category._id}>
-                {category.name}
-              </MenuItem>
-            ))}
-          </Select>
-        </FormControl>
+        <Grid container spacing={{ xs: 2, md: 3 }} alignItems="center">
+          {/* Search Bar */}
+          <Grid item xs={12} sm={6} md={5}>
+            <TextField
+              fullWidth
+              placeholder="Search products..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              InputProps={{
+                startAdornment: (
+                  <InputAdornment position="start">
+                    <Search color="action" />
+                  </InputAdornment>
+                ),
+                endAdornment: searchTerm && (
+                  <InputAdornment position="end">
+                    <IconButton
+                      aria-label="clear search"
+                      onClick={() => setSearchTerm('')}
+                      edge="end"
+                      size="small"
+                    >
+                      <Clear />
+                    </IconButton>
+                  </InputAdornment>
+                )
+              }}
+              sx={{
+                '& .MuiOutlinedInput-root': {
+                  '&:hover fieldset': {
+                    borderColor: 'primary.main',
+                  },
+                }
+              }}
+            />
+          </Grid>
+          
+          {/* Category Filter */}
+          <Grid item xs={12} sm={6} md={4}>
+            <FormControl fullWidth>
+              <InputLabel>Filter by Category</InputLabel>
+              <Select
+                value={selectedCategory}
+                label="Filter by Category"
+                onChange={(e) => setSelectedCategory(e.target.value)}
+                size={window.innerWidth < 600 ? "medium" : "medium"}
+              >
+                <MenuItem value="">All Categories</MenuItem>
+                {categories.map((category) => (
+                  <MenuItem key={category._id} value={category._id}>
+                    {category.name}
+                  </MenuItem>
+                ))}
+              </Select>
+            </FormControl>
+          </Grid>
+
+          {/* Results Count */}
+          <Grid item xs={12} md={3}>
+            <Typography 
+              variant="body2" 
+              color="text.secondary"
+              sx={{ 
+                fontSize: { xs: '0.875rem', md: '0.875rem' },
+                textAlign: { xs: 'left', md: 'right' }
+              }}
+            >
+              {products.length} product{products.length !== 1 ? 's' : ''} found
+            </Typography>
+          </Grid>
+        </Grid>
       </Box>
 
       {/* Products Grid */}
-      <Grid container spacing={{ xs: 2, md: 3 }}>
-        {products.map((product) => (
-          <Grid item xs={12} sm={6} md={4} lg={3} key={product._id}>
+      {products.length === 0 && !loading ? (
+        <Box sx={{ 
+          textAlign: 'center', 
+          py: { xs: 4, md: 6 },
+          px: 2 
+        }}>
+          <Typography 
+            variant="h6" 
+            color="text.secondary" 
+            gutterBottom
+            sx={{ fontSize: { xs: '1rem', md: '1.25rem' } }}
+          >
+            No products found
+          </Typography>
+          <Typography 
+            variant="body2" 
+            color="text.secondary"
+            sx={{ mb: 2 }}
+          >
+            {searchTerm || selectedCategory 
+              ? 'Try adjusting your search or filter criteria' 
+              : 'No products available at the moment'
+            }
+          </Typography>
+          {(searchTerm || selectedCategory) && (
+            <Button 
+              variant="outlined" 
+              onClick={() => {
+                setSearchTerm('');
+                setSelectedCategory('');
+              }}
+              sx={{ mt: 1 }}
+            >
+              Clear Filters
+            </Button>
+          )}
+        </Box>
+      ) : (
+        <Grid container spacing={{ xs: 2, md: 3 }}>
+          {products.map((product) => (
+            <Grid item xs={12} sm={6} md={4} lg={3} key={product._id}>
             <Card sx={{ 
               height: '100%', 
               display: 'flex', 
@@ -355,9 +449,10 @@ const Products: React.FC = () => {
                 </Button>
               </CardActions>
             </Card>
-          </Grid>
-        ))}
-      </Grid>
+            </Grid>
+          ))}
+        </Grid>
+      )}
 
       {/* Shopping Cart Drawer */}
       <Drawer

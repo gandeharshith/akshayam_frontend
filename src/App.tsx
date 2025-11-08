@@ -8,6 +8,7 @@ import { CartProvider } from './contexts/CartContext';
 import Home from './pages/Home';
 import About from './pages/About';
 import Products from './pages/Products';
+import Cart from './pages/Cart';
 import MyOrders from './pages/MyOrders';
 import Admin from './pages/Admin';
 import AdminLogin from './pages/AdminLogin';
@@ -43,6 +44,7 @@ function App() {
                 <Route path="/" element={<Home />} />
                 <Route path="/about" element={<About />} />
                 <Route path="/products" element={<Products />} />
+                <Route path="/cart" element={<Cart />} />
                 <Route path="/my-orders" element={<MyOrders />} />
                 <Route path="/adddmin/login" element={<AdminLogin />} />
                 <Route path="/adddmin/*" element={<Admin />} />

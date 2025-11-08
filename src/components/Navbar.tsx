@@ -99,7 +99,7 @@ const Navbar: React.FC = () => {
             {/* Cart Icon */}
             <IconButton
               color="inherit"
-              onClick={() => navigate('/products')}
+              onClick={() => navigate('/cart')}
               title="View Cart"
               sx={{ ml: isMobile ? 1 : 2 }}
             >

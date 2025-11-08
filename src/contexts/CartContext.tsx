@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useReducer, ReactNode } from 'react';
+import React, { createContext, useContext, useReducer, ReactNode, useEffect } from 'react';
 import { CartItem, Product } from '../types';
 
 interface CartState {
@@ -76,10 +76,32 @@ const calculateCartState = (items: CartItem[]): CartState => {
   return { items, total, itemCount };
 };
 
-const initialState: CartState = {
-  items: [],
-  total: 0,
-  itemCount: 0
+// Helper functions for localStorage
+const CART_STORAGE_KEY = 'akshayam_cart';
+
+const saveCartToStorage = (items: CartItem[]) => {
+  try {
+    localStorage.setItem(CART_STORAGE_KEY, JSON.stringify(items));
+  } catch (error) {
+    console.error('Failed to save cart to localStorage:', error);
+  }
+};
+
+const loadCartFromStorage = (): CartItem[] => {
+  try {
+    const stored = localStorage.getItem(CART_STORAGE_KEY);
+    if (stored) {
+      return JSON.parse(stored);
+    }
+  } catch (error) {
+    console.error('Failed to load cart from localStorage:', error);
+  }
+  return [];
+};
+
+const getInitialState = (): CartState => {
+  const storedItems = loadCartFromStorage();
+  return calculateCartState(storedItems);
 };
 
 interface CartProviderProps {
@@ -87,7 +109,12 @@ interface CartProviderProps {
 }
 
 export const CartProvider: React.FC<CartProviderProps> = ({ children }) => {
-  const [state, dispatch] = useReducer(cartReducer, initialState);
+  const [state, dispatch] = useReducer(cartReducer, getInitialState());
+
+  // Save to localStorage whenever cart state changes
+  useEffect(() => {
+    saveCartToStorage(state.items);
+  }, [state.items]);
 
   const addItem = (product: Product) => {
     dispatch({ type: 'ADD_ITEM', payload: product });
