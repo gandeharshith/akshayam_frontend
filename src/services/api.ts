@@ -214,7 +214,7 @@ export const contentAPI = {
   },
   
   updateById: async (id: string, content: ContentUpdate): Promise<Content> => {
-    const response = await api.put(`/admin/content/${id}`, content);
+    const response = await api.put(`/admin/content/id/${id}`, content);
     return response.data;
   },
   

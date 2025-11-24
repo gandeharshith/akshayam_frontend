@@ -581,6 +581,10 @@ const Admin: React.FC = () => {
         contentAPI.get('about'),
         contentAPI.getSection('delivery', 'schedule').catch(() => null)
       ]);
+      
+      console.log('Fetched about data:', aboutData);
+      console.log('Previous about content:', aboutContent);
+      
       setCategories(categoriesData);
       setProducts(productsData);
       setRecipes(recipesData);
@@ -589,6 +593,8 @@ const Admin: React.FC = () => {
       setHomeContent(homeData);
       setAboutContent(aboutData);
       setDeliveryContent(deliveryData);
+      
+      console.log('About content state should be updated to:', aboutData);
       
       // Load system settings
       await fetchSystemSettings();
@@ -732,23 +738,36 @@ const Admin: React.FC = () => {
   const handleContentSubmit = async () => {
     if (!editingContent) return;
     try {
-      if (editingContent._id) {
-        // Update existing content
-        await contentAPI.update(editingContent.page, contentForm);
+      // Check if this is existing content with an ID
+      const hasExistingId = editingContent._id && editingContent._id !== '';
+      
+      if (hasExistingId) {
+        // Update existing content using ID-based endpoint for specific content items
+        await contentAPI.updateById(editingContent._id, contentForm);
       } else {
-        // Create new content (for delivery schedule)
-        await contentAPI.create({
-          page: editingContent.page,
-          section: editingContent.section || '',
-          title: contentForm.title,
-          content: contentForm.content
-        });
+        // Check if this is main page content (home, about) - these should always be updates
+        const isMainPageContent = editingContent.page === 'home' || editingContent.page === 'about';
+        
+        if (isMainPageContent) {
+          // Update existing main page content using page-based endpoint
+          await contentAPI.update(editingContent.page, contentForm);
+        } else {
+          // Create new content (for delivery schedule or new sections)
+          await contentAPI.create({
+            page: editingContent.page,
+            section: editingContent.section || '',
+            title: contentForm.title,
+            content: contentForm.content
+          });
+        }
       }
       setContentDialogOpen(false);
       setEditingContent(null);
       fetchData();
-    } catch (err) {
-      console.error(err);
+    } catch (err: any) {
+      console.error('Failed to save content:', err);
+      setError('Failed to save content. Please try again.');
+      setTimeout(() => setError(''), 5000);
     }
   };
 
@@ -848,8 +867,10 @@ const Admin: React.FC = () => {
   };
 
   const editContent = (content: Content) => {
+    console.log('editContent called with:', content);
     setEditingContent(content);
     setContentForm({ title: content.title, content: content.content });
+    console.log('contentForm set to:', { title: content.title, content: content.content });
     setContentDialogOpen(true);
   };
 
