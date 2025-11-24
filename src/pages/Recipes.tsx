@@ -184,13 +184,36 @@ const Recipes: React.FC = () => {
                 }}
               >
                 {recipe.image_url ? (
-                  <CardMedia
-                    component="img"
-                    height="200"
-                    image={`${process.env.REACT_APP_API_URL || 'http://localhost:8000'}${recipe.image_url}`}
-                    alt={recipe.name}
-                    sx={{ objectFit: 'cover' }}
-                  />
+                  <Box
+                    sx={{
+                      height: 200,
+                      overflow: 'hidden',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      backgroundColor: '#f5f5f5'
+                    }}
+                  >
+                    <img
+                      src={`${process.env.REACT_APP_API_URL || 'http://localhost:8000'}${recipe.image_url}`}
+                      alt={recipe.name}
+                      style={{
+                        width: '100%',
+                        height: '100%',
+                        objectFit: 'cover'
+                      }}
+                      onError={(e) => {
+                        // Handle failed image loads by hiding the image
+                        const target = e.target as HTMLImageElement;
+                        target.style.display = 'none';
+                        // Show "No Image" fallback
+                        const parent = target.parentElement;
+                        if (parent) {
+                          parent.innerHTML = '<div style="display: flex; align-items: center; justify-content: center; width: 100%; height: 100%; color: #666; font-size: 14px;">Image not available</div>';
+                        }
+                      }}
+                    />
+                  </Box>
                 ) : (
                   <Box
                     sx={{
@@ -201,7 +224,12 @@ const Recipes: React.FC = () => {
                       bgcolor: '#f5f5f5'
                     }}
                   >
-                    <RecipeIcon sx={{ fontSize: 60, color: '#ccc' }} />
+                    <Box sx={{ textAlign: 'center', color: '#999' }}>
+                      <RecipeIcon sx={{ fontSize: 60, color: '#ccc', mb: 1 }} />
+                      <Typography variant="body2" sx={{ fontSize: '0.875rem' }}>
+                        No Image
+                      </Typography>
+                    </Box>
                   </Box>
                 )}
                 
