@@ -61,7 +61,6 @@ import {
   CategoryCreate,
   ProductCreate,
   RecipeCreate,
-  RecipeUpdate,
   OrderAnalytics
 } from '../types';
 
@@ -309,7 +308,7 @@ const Admin: React.FC = () => {
       setRecipeDialogOpen(false);
       setRecipeForm({ name: '', description: '' });
       setEditingRecipe(null);
-      fetchRecipes();
+      fetchData(); // Use main fetchData function to ensure consistency
     } catch (err) {
       console.error('Failed to save recipe:', err);
     }
@@ -319,7 +318,7 @@ const Admin: React.FC = () => {
     if (window.confirm('Are you sure you want to delete this recipe?')) {
       try {
         await recipesAPI.delete(id);
-        fetchRecipes();
+        fetchData(); // Use main fetchData function to ensure consistency
       } catch (err) {
         console.error('Failed to delete recipe:', err);
       }
@@ -329,7 +328,7 @@ const Admin: React.FC = () => {
   const handleRecipeImageUpload = async (recipeId: string, file: File) => {
     try {
       await recipesAPI.uploadImage(recipeId, file);
-      fetchRecipes();
+      fetchData(); // Use main fetchData function to ensure consistency
     } catch (err) {
       console.error('Failed to upload recipe image:', err);
     }
@@ -338,7 +337,7 @@ const Admin: React.FC = () => {
   const handleRecipePdfUpload = async (recipeId: string, file: File) => {
     try {
       await recipesAPI.uploadPdf(recipeId, file);
-      fetchRecipes();
+      fetchData(); // Use main fetchData function to ensure consistency
     } catch (err) {
       console.error('Failed to upload recipe PDF:', err);
     }
@@ -348,18 +347,6 @@ const Admin: React.FC = () => {
     setEditingRecipe(recipe);
     setRecipeForm({ name: recipe.name, description: recipe.description });
     setRecipeDialogOpen(true);
-  };
-
-  const fetchRecipes = async () => {
-    try {
-      const response = await fetch(`${process.env.REACT_APP_API_URL || 'http://localhost:8000'}/api/recipes`);
-      if (response.ok) {
-        const recipesData = await response.json();
-        setRecipes(recipesData);
-      }
-    } catch (err) {
-      console.error('Failed to fetch recipes:', err);
-    }
   };
 
   // Contact management
