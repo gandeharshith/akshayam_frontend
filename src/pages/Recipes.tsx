@@ -28,20 +28,7 @@ import {
   Visibility as VisibilityIcon
 } from '@mui/icons-material';
 import { Recipe } from '../types';
-
-// Placeholder API function - will be replaced with actual API call
-const fetchRecipes = async (): Promise<Recipe[]> => {
-  try {
-    const response = await fetch(`${process.env.REACT_APP_API_URL || 'http://localhost:8000'}/api/recipes`);
-    if (!response.ok) {
-      throw new Error('Failed to fetch recipes');
-    }
-    return await response.json();
-  } catch (error) {
-    console.error('Error fetching recipes:', error);
-    return [];
-  }
-};
+import { recipesAPI } from '../services/api';
 
 const Recipes: React.FC = () => {
   const [recipes, setRecipes] = useState<Recipe[]>([]);
@@ -56,7 +43,7 @@ const Recipes: React.FC = () => {
     const loadRecipes = async () => {
       try {
         setLoading(true);
-        const recipesData = await fetchRecipes();
+        const recipesData = await recipesAPI.getAll();
         setRecipes(recipesData);
       } catch (err) {
         setError('Failed to load recipes. Please try again later.');
