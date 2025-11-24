@@ -64,50 +64,71 @@ const About: React.FC = () => {
         {content?.title || 'About Akshayam Wellness'}
       </Typography>
 
-      <Paper sx={{ p: { xs: 3, md: 4 } }}>
-        <Grid container spacing={{ xs: 3, md: 4 }} alignItems="flex-start">
-          {/* Content Section - Left Side */}
-          <Grid item xs={12} md={7}>
+      <Paper sx={{ p: { xs: 2, md: 3 } }}>
+        {content?.logo_url ? (
+          // Layout with logo - text flows around and below the image
+          <Box sx={{ position: 'relative' }}>
+            {/* Logo positioned on right */}
+            <Box sx={{ 
+              float: { xs: 'none', md: 'right' },
+              ml: { xs: 0, md: 3 },
+              mb: { xs: 2, md: 2 },
+              textAlign: { xs: 'center', md: 'right' }
+            }}>
+              <img
+                src={`${process.env.REACT_APP_API_URL || 'http://localhost:8000'}${content.logo_url}`}
+                alt="Akshayam Wellness Logo"
+                style={{ 
+                  maxWidth: window.innerWidth < 900 ? '300px' : '400px',
+                  maxHeight: window.innerWidth < 900 ? '300px' : '400px', 
+                  objectFit: 'contain',
+                  filter: 'drop-shadow(0 4px 8px rgba(0,0,0,0.1))'
+                }}
+              />
+            </Box>
+            
+            {/* Text that flows around and below the image */}
             <Typography 
               variant="body1" 
               sx={{ 
-                lineHeight: { xs: 1.6, md: 1.8 }, 
-                fontSize: { xs: '1rem', md: '1.125rem' },
+                lineHeight: { xs: 1.3, md: 1.4 }, 
+                fontSize: { xs: '0.875rem', md: '0.95rem' },
                 textAlign: 'justify',
-                whiteSpace: 'pre-line'
+                whiteSpace: 'pre-line',
+                '&::after': {
+                  content: '""',
+                  display: 'table',
+                  clear: 'both'
+                }
               }}
             >
-              {content?.content || `Founded with a mission to provide pure, organic products, 
-              Akshayam Wellness has been serving customers with premium quality natural products. 
-              Our commitment to sustainability and health drives everything we do.
+              {content?.content || `Founded with a mission to provide pure, organic products, Akshayam Wellness has been serving customers with premium quality natural products. Our commitment to sustainability and health drives everything we do.
 
-              We believe in the power of nature to heal and nourish. Every product in our collection is carefully sourced and quality-tested to ensure you receive only the best. From traditional wellness practices to modern organic innovations, we bridge the gap between ancient wisdom and contemporary health needs.`}
+              We believe in the power of nature to heal and nourish. Every product in our collection is carefully sourced and quality-tested to ensure you receive only the best. From traditional wellness practices to modern organic innovations, we bridge the gap between ancient wisdom and contemporary health needs.
+
+              Our dedication to quality extends beyond just sourcing - we ensure that every step of our process, from procurement to packaging, meets the highest standards. This commitment has earned us the trust of customers who rely on us for their wellness journey.
+
+              At Akshayam Wellness, we understand that true health comes from natural solutions. That's why we work closely with organic farmers and trusted suppliers to bring you products that are not only effective but also ethically sourced and environmentally sustainable.`}
             </Typography>
-          </Grid>
+          </Box>
+        ) : (
+          // Layout without logo - full width text
+          <Typography 
+            variant="body1" 
+            sx={{ 
+              lineHeight: { xs: 1.3, md: 1.4 }, 
+              fontSize: { xs: '0.875rem', md: '0.95rem' },
+              textAlign: 'justify',
+              whiteSpace: 'pre-line'
+            }}
+          >
+            {content?.content || `Founded with a mission to provide pure, organic products, 
+            Akshayam Wellness has been serving customers with premium quality natural products. 
+            Our commitment to sustainability and health drives everything we do.
 
-          {/* Logo Section - Right Side */}
-          <Grid item xs={12} md={5}>
-            {content?.logo_url && (
-              <Box sx={{ 
-                display: 'flex', 
-                justifyContent: { xs: 'center', md: 'flex-end' },
-                alignItems: 'center',
-                height: '100%'
-              }}>
-                <img
-                  src={`${process.env.REACT_APP_API_URL || 'http://localhost:8000'}${content.logo_url}`}
-                  alt="Akshayam Wellness Logo"
-                  style={{ 
-                    maxWidth: '100%',
-                    maxHeight: window.innerWidth < 900 ? '350px' : '550px', 
-                    objectFit: 'contain',
-                    filter: 'drop-shadow(0 4px 8px rgba(0,0,0,0.1))'
-                  }}
-                />
-              </Box>
-            )}
-          </Grid>
-        </Grid>
+            We believe in the power of nature to heal and nourish. Every product in our collection is carefully sourced and quality-tested to ensure you receive only the best. From traditional wellness practices to modern organic innovations, we bridge the gap between ancient wisdom and contemporary health needs.`}
+          </Typography>
+        )}
       </Paper>
     </Container>
   );

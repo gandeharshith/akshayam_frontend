@@ -263,7 +263,7 @@ const Home: React.FC = () => {
                     lineHeight: { xs: 1.5, md: 1.6 }
                   }}
                 >
-                  {feature1?.content || 'All our products are certified organic and are self products'}
+                  {feature1?.content || 'All our products are certified organic or self produced from cow based natural farming'}
                 </Typography>
               </Box>
             </Grid>
