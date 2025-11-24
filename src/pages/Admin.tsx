@@ -455,7 +455,6 @@ const Admin: React.FC = () => {
   });
 
   // System Settings states
-  const [systemSettings, setSystemSettings] = useState<any[]>([]);
   const [settingsLoading, setSettingsLoading] = useState(false);
   const [minOrderValue, setMinOrderValue] = useState<number>(500);
   const [settingsDialogOpen, setSettingsDialogOpen] = useState(false);
@@ -464,6 +463,99 @@ const Admin: React.FC = () => {
   });
 
   const navigate = useNavigate();
+
+  // Drag and drop sensors
+  const sensors = useSensors(
+    useSensor(PointerSensor),
+    useSensor(KeyboardSensor, {
+      coordinateGetter: sortableKeyboardCoordinates,
+    })
+  );
+
+  // Drag end handlers
+  const handleCategoryDragEnd = async (event: DragEndEvent) => {
+    const { active, over } = event;
+    
+    if (!over || active.id === over.id) return;
+    
+    const oldIndex = categories.findIndex((item) => item._id === active.id);
+    const newIndex = categories.findIndex((item) => item._id === over.id);
+    
+    if (oldIndex !== newIndex) {
+      const newCategories = arrayMove(categories, oldIndex, newIndex);
+      
+      // Optimistically update the UI
+      setCategories(newCategories);
+      
+      // Update order in backend
+      try {
+        const reorderData = newCategories.map((category, index) => ({
+          id: category._id,
+          order: index
+        }));
+        
+        console.log('Reordering categories:', reorderData);
+        await categoriesAPI.reorder(reorderData);
+        console.log('Categories reordered successfully');
+        
+        // Don't fetch data again, keep the current optimistic update
+      } catch (error: any) {
+        console.error('Failed to reorder categories:', error);
+        console.error('Error details:', error.response?.data || error.message);
+        
+        // Only revert on error by restoring original order
+        const originalCategories = arrayMove(newCategories, newIndex, oldIndex);
+        setCategories(originalCategories);
+        
+        // Show user-friendly error message with details
+        const errorMessage = error.response?.data?.detail || error.message || 'Unknown error';
+        setError(`Failed to reorder categories: ${errorMessage}`);
+        setTimeout(() => setError(''), 5000);
+      }
+    }
+  };
+
+  const handleProductDragEnd = async (event: DragEndEvent) => {
+    const { active, over } = event;
+    
+    if (!over || active.id === over.id) return;
+    
+    const oldIndex = products.findIndex((item) => item._id === active.id);
+    const newIndex = products.findIndex((item) => item._id === over.id);
+    
+    if (oldIndex !== newIndex) {
+      const newProducts = arrayMove(products, oldIndex, newIndex);
+      
+      // Optimistically update the UI
+      setProducts(newProducts);
+      
+      // Update order in backend
+      try {
+        const reorderData = newProducts.map((product, index) => ({
+          id: product._id,
+          order: index
+        }));
+        
+        console.log('Reordering products:', reorderData);
+        await productsAPI.reorder(reorderData);
+        console.log('Products reordered successfully');
+        
+        // Don't fetch data again, keep the current optimistic update
+      } catch (error: any) {
+        console.error('Failed to reorder products:', error);
+        console.error('Error details:', error.response?.data || error.message);
+        
+        // Only revert on error by restoring original order
+        const originalProducts = arrayMove(newProducts, newIndex, oldIndex);
+        setProducts(originalProducts);
+        
+        // Show user-friendly error message with details
+        const errorMessage = error.response?.data?.detail || error.message || 'Unknown error';
+        setError(`Failed to reorder products: ${errorMessage}`);
+        setTimeout(() => setError(''), 5000);
+      }
+    }
+  };
 
   useEffect(() => {
     const checkAuth = async () => {
@@ -510,7 +602,7 @@ const Admin: React.FC = () => {
 
   const fetchSystemSettings = async () => {
     try {
-      const minOrderSetting = await systemSettingsAPI.get('min_order_value');
+      const minOrderSetting = await systemSettingsAPI.get('minimum_order_value');
       setMinOrderValue(minOrderSetting.value || 500);
       setSettingsForm({ min_order_value: minOrderSetting.value || 500 });
     } catch (err) {
@@ -524,7 +616,7 @@ const Admin: React.FC = () => {
   const handleSystemSettingsSubmit = async () => {
     setSettingsLoading(true);
     try {
-      await systemSettingsAPI.update('min_order_value', settingsForm.min_order_value, 'Minimum order value required for checkout');
+      await systemSettingsAPI.update('minimum_order_value', settingsForm.min_order_value, 'Minimum order value required for checkout');
       setMinOrderValue(settingsForm.min_order_value);
       setSettingsDialogOpen(false);
       alert('Minimum order value updated successfully!');
@@ -847,120 +939,59 @@ const Admin: React.FC = () => {
             </Button>
           </Box>
 
-          {isMobile ? (
-            // Mobile Card Layout
-            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-              {categories.map((category) => (
-                <Card key={category._id} elevation={2}>
-                  <CardContent>
-                    <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', mb: 2 }}>
-                      <Box sx={{ flex: 1 }}>
-                        <Typography variant="h6" gutterBottom>{category.name}</Typography>
-                        <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
-                          {category.description}
-                        </Typography>
-                        <Typography variant="caption" color="text.secondary">
-                          Created: {formatDate(category.created_at)}
-                        </Typography>
-                      </Box>
-                      {category.image_url && (
-                        <img
-                          src={`${process.env.REACT_APP_API_URL || 'http://localhost:8000'}${category.image_url}`}
-                          alt={category.name}
-                          style={{ width: 60, height: 60, objectFit: 'cover', borderRadius: 8, marginLeft: 16 }}
-                        />
-                      )}
-                    </Box>
-                    <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                      <Box>
-                        <input
-                          type="file"
-                          accept="image/*"
-                          style={{ display: 'none' }}
-                          id={`category-image-${category._id}`}
-                          onChange={(e) => {
-                            const file = e.target.files?.[0];
-                            if (file) handleCategoryImageUpload(category._id, file);
-                          }}
-                        />
-                        <label htmlFor={`category-image-${category._id}`}>
-                          <Button component="span" size="small" startIcon={<PhotoCamera />}>
-                            {category.image_url ? 'Change Image' : 'Add Image'}
-                          </Button>
-                        </label>
-                      </Box>
-                      <Box>
-                        <IconButton onClick={() => editCategory(category)} color="primary">
-                          <Edit />
-                        </IconButton>
-                        <IconButton onClick={() => handleCategoryDelete(category._id)} color="error">
-                          <Delete />
-                        </IconButton>
-                      </Box>
-                    </Box>
-                  </CardContent>
-                </Card>
-              ))}
-            </Box>
-          ) : (
-            // Desktop Table Layout
-            <TableContainer component={Paper}>
-              <Table>
-                <TableHead>
-                  <TableRow>
-                    <TableCell>Name</TableCell>
-                    <TableCell>Description</TableCell>
-                    <TableCell>Image</TableCell>
-                    <TableCell>Created</TableCell>
-                    <TableCell>Actions</TableCell>
-                  </TableRow>
-                </TableHead>
-                <TableBody>
+          <DndContext
+            sensors={sensors}
+            collisionDetection={closestCenter}
+            onDragEnd={handleCategoryDragEnd}
+          >
+            <SortableContext
+              items={categories.map(cat => cat._id)}
+              strategy={verticalListSortingStrategy}
+            >
+              {isMobile ? (
+                // Mobile Card Layout with Drag & Drop
+                <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
                   {categories.map((category) => (
-                    <TableRow key={category._id}>
-                      <TableCell>{category.name}</TableCell>
-                      <TableCell>{category.description}</TableCell>
-                      <TableCell>
-                        {category.image_url ? (
-                          <img
-                              src={`${process.env.REACT_APP_API_URL || 'http://localhost:8000'}${category.image_url}`}
-                            alt={category.name}
-                            style={{ width: 50, height: 50, objectFit: 'cover' }}
-                          />
-                        ) : (
-                          'No image'
-                        )}
-                        <input
-                          type="file"
-                          accept="image/*"
-                          style={{ display: 'none' }}
-                          id={`category-image-${category._id}`}
-                          onChange={(e) => {
-                            const file = e.target.files?.[0];
-                            if (file) handleCategoryImageUpload(category._id, file);
-                          }}
-                        />
-                        <label htmlFor={`category-image-${category._id}`}>
-                          <IconButton component="span" size="small">
-                            <PhotoCamera />
-                          </IconButton>
-                        </label>
-                      </TableCell>
-                      <TableCell>{formatDate(category.created_at)}</TableCell>
-                      <TableCell>
-                        <IconButton onClick={() => editCategory(category)}>
-                          <Edit />
-                        </IconButton>
-                        <IconButton onClick={() => handleCategoryDelete(category._id)}>
-                          <Delete />
-                        </IconButton>
-                      </TableCell>
-                    </TableRow>
+                    <SortableCategory
+                      key={category._id}
+                      category={category}
+                      onEdit={editCategory}
+                      onDelete={handleCategoryDelete}
+                      onImageUpload={handleCategoryImageUpload}
+                      isMobile={isMobile}
+                    />
                   ))}
-                </TableBody>
-              </Table>
-            </TableContainer>
-          )}
+                </Box>
+              ) : (
+                // Desktop Table Layout with Drag & Drop
+                <TableContainer component={Paper}>
+                  <Table>
+                    <TableHead>
+                      <TableRow>
+                        <TableCell>Name</TableCell>
+                        <TableCell>Description</TableCell>
+                        <TableCell>Image</TableCell>
+                        <TableCell>Created</TableCell>
+                        <TableCell>Actions</TableCell>
+                      </TableRow>
+                    </TableHead>
+                    <TableBody>
+                      {categories.map((category) => (
+                        <SortableCategory
+                          key={category._id}
+                          category={category}
+                          onEdit={editCategory}
+                          onDelete={handleCategoryDelete}
+                          onImageUpload={handleCategoryImageUpload}
+                          isMobile={isMobile}
+                        />
+                      ))}
+                    </TableBody>
+                  </Table>
+                </TableContainer>
+              )}
+            </SortableContext>
+          </DndContext>
         </TabPanel>
 
         {/* Products Tab */}
@@ -985,145 +1016,62 @@ const Admin: React.FC = () => {
             </Button>
           </Box>
 
-          {isMobile ? (
-            // Mobile Card Layout
-            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-              {products.map((product) => {
-                const category = categories.find(c => c._id === product.category_id);
-                return (
-                  <Card key={product._id} elevation={2}>
-                    <CardContent>
-                      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', mb: 2 }}>
-                        <Box sx={{ flex: 1 }}>
-                          <Typography variant="h6" gutterBottom>{product.name}</Typography>
-                          <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
-                            Category: {category?.name || 'Unknown'}
-                          </Typography>
-                          <Typography variant="body2" sx={{ mb: 1 }}>
-                            <strong>Price:</strong> ₹{product.price}
-                          </Typography>
-                          <Chip
-                            label={`Stock: ${product.quantity}`}
-                            color={product.quantity > 0 ? 'success' : 'error'}
-                            size="small"
-                            sx={{ mb: 1 }}
-                          />
-                          <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
-                            {product.description.length > 100 
-                              ? `${product.description.substring(0, 100)}...` 
-                              : product.description}
-                          </Typography>
-                        </Box>
-                        {product.image_url && (
-                          <img
-                            src={`${process.env.REACT_APP_API_URL || 'http://localhost:8000'}${product.image_url}`}
-                            alt={product.name}
-                            style={{ width: 60, height: 60, objectFit: 'cover', borderRadius: 8, marginLeft: 16 }}
-                          />
-                        )}
-                      </Box>
-                      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                        <Box>
-                          <input
-                            type="file"
-                            accept="image/*"
-                            style={{ display: 'none' }}
-                            id={`product-image-${product._id}`}
-                            onChange={(e) => {
-                              const file = e.target.files?.[0];
-                              if (file) handleProductImageUpload(product._id, file);
-                            }}
-                          />
-                          <label htmlFor={`product-image-${product._id}`}>
-                            <Button component="span" size="small" startIcon={<PhotoCamera />}>
-                              {product.image_url ? 'Change Image' : 'Add Image'}
-                            </Button>
-                          </label>
-                        </Box>
-                        <Box>
-                          <IconButton onClick={() => editProduct(product)} color="primary">
-                            <Edit />
-                          </IconButton>
-                          <IconButton onClick={() => handleProductDelete(product._id)} color="error">
-                            <Delete />
-                          </IconButton>
-                        </Box>
-                      </Box>
-                    </CardContent>
-                  </Card>
-                );
-              })}
-            </Box>
-          ) : (
-            // Desktop Table Layout
-            <TableContainer component={Paper}>
-              <Table>
-                <TableHead>
-                  <TableRow>
-                    <TableCell>Name</TableCell>
-                    <TableCell>Category</TableCell>
-                    <TableCell>Price</TableCell>
-                    <TableCell>Quantity</TableCell>
-                    <TableCell>Image</TableCell>
-                    <TableCell>Actions</TableCell>
-                  </TableRow>
-                </TableHead>
-                <TableBody>
-                  {products.map((product) => {
-                    const category = categories.find(c => c._id === product.category_id);
-                    return (
-                      <TableRow key={product._id}>
-                        <TableCell>{product.name}</TableCell>
-                        <TableCell>{category?.name || 'Unknown'}</TableCell>
-                        <TableCell>₹{product.price}</TableCell>
-                        <TableCell>
-                          <Chip
-                            label={product.quantity}
-                            color={product.quantity > 0 ? 'success' : 'error'}
-                            size="small"
-                          />
-                        </TableCell>
-                        <TableCell>
-                          {product.image_url ? (
-                            <img
-                              src={`${process.env.REACT_APP_API_URL || 'http://localhost:8000'}${product.image_url}`}
-                              alt={product.name}
-                              style={{ width: 50, height: 50, objectFit: 'cover' }}
-                            />
-                          ) : (
-                            'No image'
-                          )}
-                          <input
-                            type="file"
-                            accept="image/*"
-                            style={{ display: 'none' }}
-                            id={`product-image-${product._id}`}
-                            onChange={(e) => {
-                              const file = e.target.files?.[0];
-                              if (file) handleProductImageUpload(product._id, file);
-                            }}
-                          />
-                          <label htmlFor={`product-image-${product._id}`}>
-                            <IconButton component="span" size="small">
-                              <PhotoCamera />
-                            </IconButton>
-                          </label>
-                        </TableCell>
-                        <TableCell>
-                          <IconButton onClick={() => editProduct(product)}>
-                            <Edit />
-                          </IconButton>
-                          <IconButton onClick={() => handleProductDelete(product._id)}>
-                            <Delete />
-                          </IconButton>
-                        </TableCell>
+          <DndContext
+            sensors={sensors}
+            collisionDetection={closestCenter}
+            onDragEnd={handleProductDragEnd}
+          >
+            <SortableContext
+              items={products.map(product => product._id)}
+              strategy={verticalListSortingStrategy}
+            >
+              {isMobile ? (
+                // Mobile Card Layout with Drag & Drop
+                <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+                  {products.map((product) => (
+                    <SortableProduct
+                      key={product._id}
+                      product={product}
+                      categories={categories}
+                      onEdit={editProduct}
+                      onDelete={handleProductDelete}
+                      onImageUpload={handleProductImageUpload}
+                      isMobile={isMobile}
+                    />
+                  ))}
+                </Box>
+              ) : (
+                // Desktop Table Layout with Drag & Drop
+                <TableContainer component={Paper}>
+                  <Table>
+                    <TableHead>
+                      <TableRow>
+                        <TableCell>Name</TableCell>
+                        <TableCell>Category</TableCell>
+                        <TableCell>Price</TableCell>
+                        <TableCell>Quantity</TableCell>
+                        <TableCell>Image</TableCell>
+                        <TableCell>Actions</TableCell>
                       </TableRow>
-                    );
-                  })}
-                </TableBody>
-              </Table>
-            </TableContainer>
-          )}
+                    </TableHead>
+                    <TableBody>
+                      {products.map((product) => (
+                        <SortableProduct
+                          key={product._id}
+                          product={product}
+                          categories={categories}
+                          onEdit={editProduct}
+                          onDelete={handleProductDelete}
+                          onImageUpload={handleProductImageUpload}
+                          isMobile={isMobile}
+                        />
+                      ))}
+                    </TableBody>
+                  </Table>
+                </TableContainer>
+              )}
+            </SortableContext>
+          </DndContext>
         </TabPanel>
 
         {/* Recipes Tab */}

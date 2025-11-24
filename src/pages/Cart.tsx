@@ -31,7 +31,7 @@ import {
 } from '@mui/icons-material';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { useCart } from '../contexts/CartContext';
-import { ordersAPI, stockAPI, contentAPI } from '../services/api';
+import { ordersAPI, stockAPI, contentAPI, systemSettingsAPI } from '../services/api';
 import { User, OrderItem, StockValidationItem, OrderCreateError } from '../types';
 
 const Cart: React.FC = () => {
@@ -43,6 +43,7 @@ const Cart: React.FC = () => {
   const [orderLoading, setOrderLoading] = useState(false);
   const [stockValidationErrors, setStockValidationErrors] = useState<string[]>([]);
   const [deliveryContent, setDeliveryContent] = useState<any>(null);
+  const [minOrderValue, setMinOrderValue] = useState<number>(500); // Default fallback
   const [userInfo, setUserInfo] = useState<User & { password: string }>({
     name: '',
     email: '',
@@ -50,9 +51,6 @@ const Cart: React.FC = () => {
     address: '',
     password: ''
   });
-
-  // Get minimum order value from environment
-  const minOrderValue = Number(process.env.REACT_APP_MIN_ORDER_VALUE) || 500;
   
   // Check if this is an admin context (admin pages start with /adddmin)
   const isAdminContext = location.pathname.startsWith('/adddmin');
@@ -66,18 +64,28 @@ const Cart: React.FC = () => {
     clearCart
   } = useCart();
 
-  // Fetch delivery schedule content
+  // Fetch delivery schedule content and minimum order value
   useEffect(() => {
-    const fetchDeliveryContent = async () => {
+    const fetchData = async () => {
       try {
+        // Fetch delivery content
         const deliveryData = await contentAPI.getSection('delivery', 'schedule');
         setDeliveryContent(deliveryData);
       } catch (err) {
         console.error('Error fetching delivery content:', err);
       }
+
+      try {
+        // Fetch minimum order value from backend
+        const minOrderSetting = await systemSettingsAPI.get('minimum_order_value');
+        setMinOrderValue(minOrderSetting.value || 500);
+      } catch (err) {
+        console.error('Error fetching minimum order value:', err);
+        // Keep default value of 500 if fetch fails
+      }
     };
 
-    fetchDeliveryContent();
+    fetchData();
   }, []);
 
   const validateStock = async () => {
