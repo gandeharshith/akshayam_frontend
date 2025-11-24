@@ -99,7 +99,7 @@ const About: React.FC = () => {
                   alt="Akshayam Wellness Logo"
                   style={{ 
                     maxWidth: '100%',
-                    maxHeight: window.innerWidth < 900 ? '200px' : '300px', 
+                    maxHeight: window.innerWidth < 900 ? '350px' : '550px', 
                     objectFit: 'contain',
                     filter: 'drop-shadow(0 4px 8px rgba(0,0,0,0.1))'
                   }}
