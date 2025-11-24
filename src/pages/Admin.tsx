@@ -40,8 +40,28 @@ import {
   Edit,
   Delete,
   PhotoCamera,
-  Visibility
+  Visibility,
+  DragIndicator
 } from '@mui/icons-material';
+import {
+  DndContext,
+  closestCenter,
+  KeyboardSensor,
+  PointerSensor,
+  useSensor,
+  useSensors,
+  DragEndEvent
+} from '@dnd-kit/core';
+import {
+  arrayMove,
+  SortableContext,
+  sortableKeyboardCoordinates,
+  verticalListSortingStrategy,
+  useSortable
+} from '@dnd-kit/sortable';
+import {
+  CSS
+} from '@dnd-kit/utilities';
 import { useNavigate } from 'react-router-dom';
 import {
   authAPI,
@@ -50,7 +70,8 @@ import {
   recipesAPI,
   ordersAPI,
   contentAPI,
-  contactAPI
+  contactAPI,
+  systemSettingsAPI
 } from '../services/api';
 import {
   Category,
@@ -76,6 +97,305 @@ const TabPanel: React.FC<TabPanelProps> = ({ children, value, index }) => (
   </div>
 );
 
+// Sortable Item Component for Categories
+interface SortableCategoryProps {
+  category: Category;
+  onEdit: (category: Category) => void;
+  onDelete: (id: string) => void;
+  onImageUpload: (id: string, file: File) => void;
+  isMobile: boolean;
+}
+
+const SortableCategory: React.FC<SortableCategoryProps> = ({ 
+  category, onEdit, onDelete, onImageUpload, isMobile 
+}) => {
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+    isDragging,
+  } = useSortable({ id: category._id });
+
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    opacity: isDragging ? 0.5 : 1,
+  };
+
+  const formatDate = (dateString: string) => {
+    return new Date(dateString).toLocaleDateString('en-IN', {
+      year: 'numeric',
+      month: 'short',
+      day: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit'
+    });
+  };
+
+  if (isMobile) {
+    return (
+      <Card ref={setNodeRef} style={style} elevation={2} sx={{ mb: 2 }}>
+        <CardContent>
+          <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', mb: 2 }}>
+            <IconButton {...attributes} {...listeners} sx={{ cursor: 'grab', mr: 1, p: 0.5 }}>
+              <DragIndicator />
+            </IconButton>
+            <Box sx={{ flex: 1 }}>
+              <Typography variant="h6" gutterBottom>{category.name}</Typography>
+              <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
+                {category.description}
+              </Typography>
+              <Typography variant="caption" color="text.secondary">
+                Created: {formatDate(category.created_at)}
+              </Typography>
+            </Box>
+            {category.image_url && (
+              <img
+                src={`${process.env.REACT_APP_API_URL || 'http://localhost:8000'}${category.image_url}`}
+                alt={category.name}
+                style={{ width: 60, height: 60, objectFit: 'cover', borderRadius: 8, marginLeft: 16 }}
+              />
+            )}
+          </Box>
+          <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <Box>
+              <input
+                type="file"
+                accept="image/*"
+                style={{ display: 'none' }}
+                id={`category-image-${category._id}`}
+                onChange={(e) => {
+                  const file = e.target.files?.[0];
+                  if (file) onImageUpload(category._id, file);
+                }}
+              />
+              <label htmlFor={`category-image-${category._id}`}>
+                <Button component="span" size="small" startIcon={<PhotoCamera />}>
+                  {category.image_url ? 'Change Image' : 'Add Image'}
+                </Button>
+              </label>
+            </Box>
+            <Box>
+              <IconButton onClick={() => onEdit(category)} color="primary">
+                <Edit />
+              </IconButton>
+              <IconButton onClick={() => onDelete(category._id)} color="error">
+                <Delete />
+              </IconButton>
+            </Box>
+          </Box>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  return (
+    <TableRow ref={setNodeRef} style={style}>
+      <TableCell>
+        <Box sx={{ display: 'flex', alignItems: 'center' }}>
+          <IconButton {...attributes} {...listeners} sx={{ cursor: 'grab', mr: 1, p: 0.5 }}>
+            <DragIndicator />
+          </IconButton>
+          {category.name}
+        </Box>
+      </TableCell>
+      <TableCell>{category.description}</TableCell>
+      <TableCell>
+        {category.image_url ? (
+          <img
+            src={`${process.env.REACT_APP_API_URL || 'http://localhost:8000'}${category.image_url}`}
+            alt={category.name}
+            style={{ width: 50, height: 50, objectFit: 'cover' }}
+          />
+        ) : (
+          'No image'
+        )}
+        <input
+          type="file"
+          accept="image/*"
+          style={{ display: 'none' }}
+          id={`category-image-${category._id}`}
+          onChange={(e) => {
+            const file = e.target.files?.[0];
+            if (file) onImageUpload(category._id, file);
+          }}
+        />
+        <label htmlFor={`category-image-${category._id}`}>
+          <IconButton component="span" size="small">
+            <PhotoCamera />
+          </IconButton>
+        </label>
+      </TableCell>
+      <TableCell>{formatDate(category.created_at)}</TableCell>
+      <TableCell>
+        <IconButton onClick={() => onEdit(category)}>
+          <Edit />
+        </IconButton>
+        <IconButton onClick={() => onDelete(category._id)}>
+          <Delete />
+        </IconButton>
+      </TableCell>
+    </TableRow>
+  );
+};
+
+// Sortable Item Component for Products
+interface SortableProductProps {
+  product: Product;
+  categories: Category[];
+  onEdit: (product: Product) => void;
+  onDelete: (id: string) => void;
+  onImageUpload: (id: string, file: File) => void;
+  isMobile: boolean;
+}
+
+const SortableProduct: React.FC<SortableProductProps> = ({ 
+  product, categories, onEdit, onDelete, onImageUpload, isMobile 
+}) => {
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+    isDragging,
+  } = useSortable({ id: product._id });
+
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    opacity: isDragging ? 0.5 : 1,
+  };
+
+  const category = categories.find(c => c._id === product.category_id);
+
+  if (isMobile) {
+    return (
+      <Card ref={setNodeRef} style={style} elevation={2} sx={{ mb: 2 }}>
+        <CardContent>
+          <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', mb: 2 }}>
+            <IconButton {...attributes} {...listeners} sx={{ cursor: 'grab', mr: 1, p: 0.5 }}>
+              <DragIndicator />
+            </IconButton>
+            <Box sx={{ flex: 1 }}>
+              <Typography variant="h6" gutterBottom>{product.name}</Typography>
+              <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
+                Category: {category?.name || 'Unknown'}
+              </Typography>
+              <Typography variant="body2" sx={{ mb: 1 }}>
+                <strong>Price:</strong> ₹{product.price}
+              </Typography>
+              <Chip
+                label={`Stock: ${product.quantity}`}
+                color={product.quantity > 0 ? 'success' : 'error'}
+                size="small"
+                sx={{ mb: 1 }}
+              />
+              <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
+                {product.description.length > 100 
+                  ? `${product.description.substring(0, 100)}...` 
+                  : product.description}
+              </Typography>
+            </Box>
+            {product.image_url && (
+              <img
+                src={`${process.env.REACT_APP_API_URL || 'http://localhost:8000'}${product.image_url}`}
+                alt={product.name}
+                style={{ width: 60, height: 60, objectFit: 'cover', borderRadius: 8, marginLeft: 16 }}
+              />
+            )}
+          </Box>
+          <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <Box>
+              <input
+                type="file"
+                accept="image/*"
+                style={{ display: 'none' }}
+                id={`product-image-${product._id}`}
+                onChange={(e) => {
+                  const file = e.target.files?.[0];
+                  if (file) onImageUpload(product._id, file);
+                }}
+              />
+              <label htmlFor={`product-image-${product._id}`}>
+                <Button component="span" size="small" startIcon={<PhotoCamera />}>
+                  {product.image_url ? 'Change Image' : 'Add Image'}
+                </Button>
+              </label>
+            </Box>
+            <Box>
+              <IconButton onClick={() => onEdit(product)} color="primary">
+                <Edit />
+              </IconButton>
+              <IconButton onClick={() => onDelete(product._id)} color="error">
+                <Delete />
+              </IconButton>
+            </Box>
+          </Box>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  return (
+    <TableRow ref={setNodeRef} style={style}>
+      <TableCell>
+        <Box sx={{ display: 'flex', alignItems: 'center' }}>
+          <IconButton {...attributes} {...listeners} sx={{ cursor: 'grab', mr: 1, p: 0.5 }}>
+            <DragIndicator />
+          </IconButton>
+          {product.name}
+        </Box>
+      </TableCell>
+      <TableCell>{category?.name || 'Unknown'}</TableCell>
+      <TableCell>₹{product.price}</TableCell>
+      <TableCell>
+        <Chip
+          label={product.quantity}
+          color={product.quantity > 0 ? 'success' : 'error'}
+          size="small"
+        />
+      </TableCell>
+      <TableCell>
+        {product.image_url ? (
+          <img
+            src={`${process.env.REACT_APP_API_URL || 'http://localhost:8000'}${product.image_url}`}
+            alt={product.name}
+            style={{ width: 50, height: 50, objectFit: 'cover' }}
+          />
+        ) : (
+          'No image'
+        )}
+        <input
+          type="file"
+          accept="image/*"
+          style={{ display: 'none' }}
+          id={`product-image-${product._id}`}
+          onChange={(e) => {
+            const file = e.target.files?.[0];
+            if (file) onImageUpload(product._id, file);
+          }}
+        />
+        <label htmlFor={`product-image-${product._id}`}>
+          <IconButton component="span" size="small">
+            <PhotoCamera />
+          </IconButton>
+        </label>
+      </TableCell>
+      <TableCell>
+        <IconButton onClick={() => onEdit(product)}>
+          <Edit />
+        </IconButton>
+        <IconButton onClick={() => onDelete(product._id)}>
+          <Delete />
+        </IconButton>
+      </TableCell>
+    </TableRow>
+  );
+};
+
 const Admin: React.FC = () => {
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('md'));
@@ -88,6 +408,7 @@ const Admin: React.FC = () => {
   const [analytics, setAnalytics] = useState<OrderAnalytics[]>([]);
   const [homeContent, setHomeContent] = useState<Content | null>(null);
   const [aboutContent, setAboutContent] = useState<Content | null>(null);
+  const [deliveryContent, setDeliveryContent] = useState<Content | null>(null);
   const [contactInfo, setContactInfo] = useState<any>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string>('');
@@ -133,6 +454,15 @@ const Admin: React.FC = () => {
     address: ''
   });
 
+  // System Settings states
+  const [systemSettings, setSystemSettings] = useState<any[]>([]);
+  const [settingsLoading, setSettingsLoading] = useState(false);
+  const [minOrderValue, setMinOrderValue] = useState<number>(500);
+  const [settingsDialogOpen, setSettingsDialogOpen] = useState(false);
+  const [settingsForm, setSettingsForm] = useState({
+    min_order_value: 500
+  });
+
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -149,14 +479,15 @@ const Admin: React.FC = () => {
   const fetchData = async () => {
     setLoading(true);
     try {
-      const [categoriesData, productsData, recipesData, ordersData, analyticsData, homeData, aboutData] = await Promise.all([
+      const [categoriesData, productsData, recipesData, ordersData, analyticsData, homeData, aboutData, deliveryData] = await Promise.all([
         categoriesAPI.getAll(),
         productsAPI.getAll(),
         recipesAPI.getAll(),
         ordersAPI.getAll(),
         ordersAPI.getAnalytics(),
         contentAPI.get('home'),
-        contentAPI.get('about')
+        contentAPI.get('about'),
+        contentAPI.getSection('delivery', 'schedule').catch(() => null)
       ]);
       setCategories(categoriesData);
       setProducts(productsData);
@@ -165,11 +496,43 @@ const Admin: React.FC = () => {
       setAnalytics(analyticsData);
       setHomeContent(homeData);
       setAboutContent(aboutData);
+      setDeliveryContent(deliveryData);
+      
+      // Load system settings
+      await fetchSystemSettings();
     } catch (err) {
       setError('Failed to fetch data');
       console.error(err);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const fetchSystemSettings = async () => {
+    try {
+      const minOrderSetting = await systemSettingsAPI.get('min_order_value');
+      setMinOrderValue(minOrderSetting.value || 500);
+      setSettingsForm({ min_order_value: minOrderSetting.value || 500 });
+    } catch (err) {
+      // If setting doesn't exist, use default value
+      setMinOrderValue(500);
+      setSettingsForm({ min_order_value: 500 });
+    }
+  };
+
+  // System Settings management
+  const handleSystemSettingsSubmit = async () => {
+    setSettingsLoading(true);
+    try {
+      await systemSettingsAPI.update('min_order_value', settingsForm.min_order_value, 'Minimum order value required for checkout');
+      setMinOrderValue(settingsForm.min_order_value);
+      setSettingsDialogOpen(false);
+      alert('Minimum order value updated successfully!');
+    } catch (err) {
+      console.error('Failed to update system settings:', err);
+      alert('Failed to update minimum order value. Please try again.');
+    } finally {
+      setSettingsLoading(false);
     }
   };
 
@@ -277,7 +640,18 @@ const Admin: React.FC = () => {
   const handleContentSubmit = async () => {
     if (!editingContent) return;
     try {
-      await contentAPI.update(editingContent.page, contentForm);
+      if (editingContent._id) {
+        // Update existing content
+        await contentAPI.update(editingContent.page, contentForm);
+      } else {
+        // Create new content (for delivery schedule)
+        await contentAPI.create({
+          page: editingContent.page,
+          section: editingContent.section || '',
+          title: contentForm.title,
+          content: contentForm.content
+        });
+      }
       setContentDialogOpen(false);
       setEditingContent(null);
       fetchData();
@@ -1306,50 +1680,427 @@ const Admin: React.FC = () => {
                 </CardContent>
               </Card>
             </Grid>
+
+            {/* Delivery Schedule Content */}
+            <Grid item xs={12} md={6}>
+              <Card>
+                <CardContent>
+                  <Typography variant="h6" gutterBottom>Delivery Schedule</Typography>
+                  <Typography variant="body2" sx={{ mb: 2, fontStyle: 'italic' }}>
+                    Order deadline and delivery information shown on cart page
+                  </Typography>
+                  <Typography variant="body2" sx={{ mb: 2, maxHeight: 60, overflow: 'hidden' }}>
+                    <strong>Current:</strong> {deliveryContent?.content || 'Orders should be placed before every Wednesday 6 PM and will be delivered on Sunday'}
+                  </Typography>
+                  
+                  <Button
+                    variant="outlined"
+                    size="small"
+                    onClick={async () => {
+                      if (deliveryContent) {
+                        // Edit existing content
+                        setEditingContent(deliveryContent);
+                        setContentForm({ title: deliveryContent.title || 'Delivery Schedule', content: deliveryContent.content });
+                      } else {
+                        // Create new content
+                        setEditingContent({ 
+                          _id: '', 
+                          page: 'delivery', 
+                          section: 'schedule',
+                          title: 'Delivery Schedule', 
+                          content: 'Orders should be placed before every Wednesday 6 PM and will be delivered on Sunday',
+                          created_at: '',
+                          updated_at: ''
+                        } as Content);
+                        setContentForm({ 
+                          title: 'Delivery Schedule', 
+                          content: 'Orders should be placed before every Wednesday 6 PM and will be delivered on Sunday' 
+                        });
+                      }
+                      setContentDialogOpen(true);
+                    }}
+                  >
+                    {deliveryContent ? 'Edit Schedule' : 'Create Schedule'}
+                  </Button>
+                </CardContent>
+              </Card>
+            </Grid>
           </Grid>
 
-          {/* Additional Content Sections */}
-          <Typography variant="h6" sx={{ mt: 4, mb: 2 }}>Editable Content Sections</Typography>
-          <Alert severity="info" sx={{ mb: 3 }}>
-            All website content including home page features, about page sections, and footer information can now be managed through the admin panel. 
-            Changes will be reflected immediately on the website.
-          </Alert>
-          
+          {/* Home Page Content Sections */}
+          <Typography variant="h6" sx={{ mt: 4, mb: 2 }}>Home Page Content Sections</Typography>
+          <Grid container spacing={2}>
+            <Grid item xs={12} md={6}>
+              <Paper sx={{ p: 2 }}>
+                <Typography variant="h6" gutterBottom>Categories Heading</Typography>
+                <Typography variant="body2" sx={{ mb: 2 }}>
+                  Main heading for product categories section
+                </Typography>
+                <Button 
+                  variant="outlined" 
+                  size="small"
+                  onClick={() => {
+                    setEditingContent({
+                      _id: '', 
+                      page: 'home', 
+                      section: 'categories_heading',
+                      title: 'Our Product Categories', 
+                      content: '',
+                      created_at: '',
+                      updated_at: ''
+                    } as Content);
+                    setContentForm({ 
+                      title: 'Our Product Categories', 
+                      content: '' 
+                    });
+                    setContentDialogOpen(true);
+                  }}
+                >
+                  Edit Heading
+                </Button>
+              </Paper>
+            </Grid>
+            <Grid item xs={12} md={6}>
+              <Paper sx={{ p: 2 }}>
+                <Typography variant="h6" gutterBottom>Features Heading</Typography>
+                <Typography variant="body2" sx={{ mb: 2 }}>
+                  Main heading for "Why Choose Us" section
+                </Typography>
+                <Button 
+                  variant="outlined" 
+                  size="small"
+                  onClick={() => {
+                    setEditingContent({
+                      _id: '', 
+                      page: 'home', 
+                      section: 'features_heading',
+                      title: 'Why Choose Akshayam Wellness?', 
+                      content: '',
+                      created_at: '',
+                      updated_at: ''
+                    } as Content);
+                    setContentForm({ 
+                      title: 'Why Choose Akshayam Wellness?', 
+                      content: '' 
+                    });
+                    setContentDialogOpen(true);
+                  }}
+                >
+                  Edit Heading
+                </Button>
+              </Paper>
+            </Grid>
+            <Grid item xs={12} md={4}>
+              <Paper sx={{ p: 2 }}>
+                <Typography variant="h6" gutterBottom>Feature 1</Typography>
+                <Typography variant="body2" sx={{ mb: 2 }}>
+                  First feature box content
+                </Typography>
+                <Button 
+                  variant="outlined" 
+                  size="small"
+                  onClick={() => {
+                    setEditingContent({
+                      _id: '', 
+                      page: 'home', 
+                      section: 'feature_1',
+                      title: '100% Organic', 
+                      content: 'All our products are certified organic and are self products',
+                      created_at: '',
+                      updated_at: ''
+                    } as Content);
+                    setContentForm({ 
+                      title: '100% Organic', 
+                      content: 'All our products are certified organic and are self products' 
+                    });
+                    setContentDialogOpen(true);
+                  }}
+                >
+                  Edit Feature
+                </Button>
+              </Paper>
+            </Grid>
+            <Grid item xs={12} md={4}>
+              <Paper sx={{ p: 2 }}>
+                <Typography variant="h6" gutterBottom>Feature 2</Typography>
+                <Typography variant="body2" sx={{ mb: 2 }}>
+                  Second feature box content
+                </Typography>
+                <Button 
+                  variant="outlined" 
+                  size="small"
+                  onClick={() => {
+                    setEditingContent({
+                      _id: '', 
+                      page: 'home', 
+                      section: 'feature_2',
+                      title: 'Quality Assured', 
+                      content: 'Every product undergoes rigorous quality checks before reaching you',
+                      created_at: '',
+                      updated_at: ''
+                    } as Content);
+                    setContentForm({ 
+                      title: 'Quality Assured', 
+                      content: 'Every product undergoes rigorous quality checks before reaching you' 
+                    });
+                    setContentDialogOpen(true);
+                  }}
+                >
+                  Edit Feature
+                </Button>
+              </Paper>
+            </Grid>
+            <Grid item xs={12} md={4}>
+              <Paper sx={{ p: 2 }}>
+                <Typography variant="h6" gutterBottom>Feature 3</Typography>
+                <Typography variant="body2" sx={{ mb: 2 }}>
+                  Third feature box content
+                </Typography>
+                <Button 
+                  variant="outlined" 
+                  size="small"
+                  onClick={() => {
+                    setEditingContent({
+                      _id: '', 
+                      page: 'home', 
+                      section: 'feature_3',
+                      title: 'Delivery Schedule', 
+                      content: 'Orders should be placed before every Wednesday 6 PM and the shipment will be delivered on Sunday',
+                      created_at: '',
+                      updated_at: ''
+                    } as Content);
+                    setContentForm({ 
+                      title: 'Delivery Schedule', 
+                      content: 'Orders should be placed before every Wednesday 6 PM and the shipment will be delivered on Sunday' 
+                    });
+                    setContentDialogOpen(true);
+                  }}
+                >
+                  Edit Feature
+                </Button>
+              </Paper>
+            </Grid>
+          </Grid>
+
+          {/* About Page Content Sections */}
+          <Typography variant="h6" sx={{ mt: 4, mb: 2 }}>About Page Content Sections</Typography>
+          <Grid container spacing={2}>
+            <Grid item xs={12} md={6}>
+              <Paper sx={{ p: 2 }}>
+                <Typography variant="h6" gutterBottom>Mission Section</Typography>
+                <Typography variant="body2" sx={{ mb: 2 }}>
+                  Company mission statement
+                </Typography>
+                <Button 
+                  variant="outlined" 
+                  size="small"
+                  onClick={() => {
+                    setEditingContent({
+                      _id: '', 
+                      page: 'about', 
+                      section: 'mission',
+                      title: 'Our Mission', 
+                      content: 'To promote healthier living by providing access to authentic, organic wellness products that nourish the body and mind while supporting sustainable farming practices.',
+                      created_at: '',
+                      updated_at: ''
+                    } as Content);
+                    setContentForm({ 
+                      title: 'Our Mission', 
+                      content: 'To promote healthier living by providing access to authentic, organic wellness products that nourish the body and mind while supporting sustainable farming practices.' 
+                    });
+                    setContentDialogOpen(true);
+                  }}
+                >
+                  Edit Mission
+                </Button>
+              </Paper>
+            </Grid>
+            <Grid item xs={12} md={6}>
+              <Paper sx={{ p: 2 }}>
+                <Typography variant="h6" gutterBottom>Values Section</Typography>
+                <Typography variant="body2" sx={{ mb: 2 }}>
+                  Company values and principles
+                </Typography>
+                <Button 
+                  variant="outlined" 
+                  size="small"
+                  onClick={() => {
+                    setEditingContent({
+                      _id: '', 
+                      page: 'about', 
+                      section: 'values',
+                      title: 'Our Values', 
+                      content: '• Quality First: We source only the finest organic products\n• Sustainability: Supporting eco-friendly farming practices\n• Transparency: Clear information about product origins\n• Customer Care: Dedicated to your wellness journey',
+                      created_at: '',
+                      updated_at: ''
+                    } as Content);
+                    setContentForm({ 
+                      title: 'Our Values', 
+                      content: '• Quality First: We source only the finest organic products\n• Sustainability: Supporting eco-friendly farming practices\n• Transparency: Clear information about product origins\n• Customer Care: Dedicated to your wellness journey'
+                    });
+                    setContentDialogOpen(true);
+                  }}
+                >
+                  Edit Values
+                </Button>
+              </Paper>
+            </Grid>
+            <Grid item xs={12} md={4}>
+              <Paper sx={{ p: 2 }}>
+                <Typography variant="h6" gutterBottom>Why Organic</Typography>
+                <Typography variant="body2" sx={{ mb: 2 }}>
+                  Benefits of organic products
+                </Typography>
+                <Button 
+                  variant="outlined" 
+                  size="small"
+                  onClick={() => {
+                    setEditingContent({
+                      _id: '', 
+                      page: 'about', 
+                      section: 'organic',
+                      title: 'Why Choose Organic?', 
+                      content: 'Organic products are grown without harmful pesticides, synthetic fertilizers, or GMOs. They\'re not only better for your health but also for the environment.',
+                      created_at: '',
+                      updated_at: ''
+                    } as Content);
+                    setContentForm({ 
+                      title: 'Why Choose Organic?', 
+                      content: 'Organic products are grown without harmful pesticides, synthetic fertilizers, or GMOs. They\'re not only better for your health but also for the environment.'
+                    });
+                    setContentDialogOpen(true);
+                  }}
+                >
+                  Edit Content
+                </Button>
+              </Paper>
+            </Grid>
+            <Grid item xs={12} md={4}>
+              <Paper sx={{ p: 2 }}>
+                <Typography variant="h6" gutterBottom>Certifications</Typography>
+                <Typography variant="body2" sx={{ mb: 2 }}>
+                  Product certification details
+                </Typography>
+                <Button 
+                  variant="outlined" 
+                  size="small"
+                  onClick={() => {
+                    setEditingContent({
+                      _id: '', 
+                      page: 'about', 
+                      section: 'certifications',
+                      title: 'Our Certifications', 
+                      content: 'All our products are certified organic by recognized authorities, ensuring you receive genuine, high-quality wellness products.',
+                      created_at: '',
+                      updated_at: ''
+                    } as Content);
+                    setContentForm({ 
+                      title: 'Our Certifications', 
+                      content: 'All our products are certified organic by recognized authorities, ensuring you receive genuine, high-quality wellness products.'
+                    });
+                    setContentDialogOpen(true);
+                  }}
+                >
+                  Edit Content
+                </Button>
+              </Paper>
+            </Grid>
+            <Grid item xs={12} md={4}>
+              <Paper sx={{ p: 2 }}>
+                <Typography variant="h6" gutterBottom>Customer Satisfaction</Typography>
+                <Typography variant="body2" sx={{ mb: 2 }}>
+                  Customer satisfaction statement
+                </Typography>
+                <Button 
+                  variant="outlined" 
+                  size="small"
+                  onClick={() => {
+                    setEditingContent({
+                      _id: '', 
+                      page: 'about', 
+                      section: 'satisfaction',
+                      title: 'Customer Satisfaction', 
+                      content: 'With thousands of happy customers, we take pride in our commitment to quality and service excellence.',
+                      created_at: '',
+                      updated_at: ''
+                    } as Content);
+                    setContentForm({ 
+                      title: 'Customer Satisfaction', 
+                      content: 'With thousands of happy customers, we take pride in our commitment to quality and service excellence.'
+                    });
+                    setContentDialogOpen(true);
+                  }}
+                >
+                  Edit Content
+                </Button>
+              </Paper>
+            </Grid>
+          </Grid>
+
+          {/* System Settings Section */}
+          <Typography variant="h6" sx={{ mt: 4, mb: 2 }}>System Settings</Typography>
           <Grid container spacing={2}>
             <Grid item xs={12} md={4}>
               <Paper sx={{ p: 2, textAlign: 'center' }}>
-                <Typography variant="h6" gutterBottom>Home Features</Typography>
+                <Typography variant="h6" gutterBottom>System Settings</Typography>
                 <Typography variant="body2" sx={{ mb: 2 }}>
-                  "Why Choose Us" section content
+                  <strong>Min Order Value:</strong> ₹{minOrderValue}
                 </Typography>
-                <Button variant="outlined" size="small" disabled>
-                  Coming Soon
-                </Button>
-              </Paper>
-            </Grid>
-            <Grid item xs={12} md={4}>
-              <Paper sx={{ p: 2, textAlign: 'center' }}>
-                <Typography variant="h6" gutterBottom>Footer Content</Typography>
-                <Typography variant="body2" sx={{ mb: 2 }}>
-                  Footer links and descriptions
-                </Typography>
-                <Button variant="outlined" size="small" disabled>
-                  Coming Soon
-                </Button>
-              </Paper>
-            </Grid>
-            <Grid item xs={12} md={4}>
-              <Paper sx={{ p: 2, textAlign: 'center' }}>
-                <Typography variant="h6" gutterBottom>Meta Information</Typography>
-                <Typography variant="body2" sx={{ mb: 2 }}>
-                  SEO titles and descriptions
-                </Typography>
-                <Button variant="outlined" size="small" disabled>
-                  Coming Soon
+                <Button 
+                  variant="outlined" 
+                  size="small"
+                  onClick={() => setSettingsDialogOpen(true)}
+                >
+                  Edit Min Order
                 </Button>
               </Paper>
             </Grid>
           </Grid>
+
+          {/* System Settings Section */}
+          <Card sx={{ mt: 4 }}>
+            <CardContent>
+              <Box sx={{ 
+                display: 'flex', 
+                flexDirection: isMobile ? 'column' : 'row',
+                justifyContent: 'space-between', 
+                alignItems: isMobile ? 'stretch' : 'center',
+                mb: 3,
+                gap: isMobile ? 2 : 0 
+              }}>
+                <Typography variant="h6">System Settings</Typography>
+                <Button
+                  variant="contained"
+                  color="secondary"
+                  startIcon={<Edit />}
+                  fullWidth={isMobile}
+                  size={isMobile ? "large" : "medium"}
+                  onClick={() => setSettingsDialogOpen(true)}
+                >
+                  Edit System Settings
+                </Button>
+              </Box>
+              
+              <Grid container spacing={2}>
+                <Grid item xs={12} md={6}>
+                  <Typography variant="body2" sx={{ mb: 1 }}>
+                    <strong>Minimum Order Value:</strong> ₹{minOrderValue}
+                  </Typography>
+                  <Typography variant="body2" sx={{ mb: 1, color: 'text.secondary' }}>
+                    Customers must place orders above this amount to checkout successfully.
+                  </Typography>
+                </Grid>
+                <Grid item xs={12} md={6}>
+                  <Typography variant="body2" sx={{ mb: 1 }}>
+                    <strong>Status:</strong> Active & enforced on cart page
+                  </Typography>
+                  <Typography variant="body2" sx={{ mb: 1, color: 'text.secondary' }}>
+                    This setting affects both website display and order validation.
+                  </Typography>
+                </Grid>
+              </Grid>
+            </CardContent>
+          </Card>
         </TabPanel>
       </Container>
 
@@ -1791,6 +2542,69 @@ const Admin: React.FC = () => {
             size={isMobile ? "large" : "medium"}
           >
             {editingRecipe ? 'Update Recipe' : 'Create Recipe'}
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* System Settings Dialog */}
+      <Dialog 
+        open={settingsDialogOpen} 
+        onClose={() => setSettingsDialogOpen(false)} 
+        maxWidth="sm" 
+        fullWidth
+        fullScreen={isMobile}
+      >
+        <DialogTitle>Edit System Settings</DialogTitle>
+        <DialogContent sx={{ pb: isMobile ? 2 : 1 }}>
+          <Alert severity="info" sx={{ mt: 2, mb: 3 }}>
+            The minimum order value is enforced during checkout. Customers must place orders above this amount to successfully complete their purchase.
+          </Alert>
+          
+          <TextField
+            fullWidth
+            label="Minimum Order Value (₹)"
+            type="number"
+            value={settingsForm.min_order_value}
+            onChange={(e) => setSettingsForm({ 
+              ...settingsForm, 
+              min_order_value: parseFloat(e.target.value) || 0 
+            })}
+            sx={{ mb: 2 }}
+            helperText="Enter the minimum amount required for orders. Current value will be shown on cart page."
+            inputProps={{ min: 0, step: 50 }}
+          />
+          
+          <Box sx={{ mt: 3, p: 2, bgcolor: 'grey.50', borderRadius: 1 }}>
+            <Typography variant="body2" sx={{ fontWeight: 'medium', mb: 1 }}>
+              Preview: Cart Page Message
+            </Typography>
+            <Typography variant="body2" sx={{ fontStyle: 'italic', color: 'text.secondary' }}>
+              "Minimum order value: ₹{settingsForm.min_order_value}. Please add more items to your cart."
+            </Typography>
+          </Box>
+        </DialogContent>
+        <DialogActions sx={{ 
+          flexDirection: isMobile ? 'column' : 'row',
+          gap: isMobile ? 1 : 0,
+          p: isMobile ? 2 : 1
+        }}>
+          <Button 
+            onClick={() => setSettingsDialogOpen(false)}
+            fullWidth={isMobile}
+            size={isMobile ? "large" : "medium"}
+            disabled={settingsLoading}
+          >
+            Cancel
+          </Button>
+          <Button 
+            onClick={handleSystemSettingsSubmit} 
+            variant="contained"
+            fullWidth={isMobile}
+            size={isMobile ? "large" : "medium"}
+            disabled={settingsLoading}
+            startIcon={settingsLoading ? <CircularProgress size={16} /> : <Edit />}
+          >
+            {settingsLoading ? 'Updating...' : 'Update Settings'}
           </Button>
         </DialogActions>
       </Dialog>

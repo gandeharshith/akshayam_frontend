@@ -13,14 +13,38 @@ import { Content } from '../types';
 
 const About: React.FC = () => {
   const [content, setContent] = useState<Content | null>(null);
+  const [missionContent, setMissionContent] = useState<Content | null>(null);
+  const [valuesContent, setValuesContent] = useState<Content | null>(null);
+  const [organicContent, setOrganicContent] = useState<Content | null>(null);
+  const [certificationsContent, setCertificationsContent] = useState<Content | null>(null);
+  const [satisfactionContent, setSatisfactionContent] = useState<Content | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string>('');
 
   useEffect(() => {
     const fetchContent = async () => {
       try {
-        const aboutContent = await contentAPI.get('about');
+        const [
+          aboutContent,
+          missionData,
+          valuesData,
+          organicData,
+          certificationsData,
+          satisfactionData
+        ] = await Promise.all([
+          contentAPI.get('about'),
+          contentAPI.getSection('about', 'mission').catch(() => null),
+          contentAPI.getSection('about', 'values').catch(() => null),
+          contentAPI.getSection('about', 'organic').catch(() => null),
+          contentAPI.getSection('about', 'certifications').catch(() => null),
+          contentAPI.getSection('about', 'satisfaction').catch(() => null)
+        ]);
         setContent(aboutContent);
+        setMissionContent(missionData);
+        setValuesContent(valuesData);
+        setOrganicContent(organicData);
+        setCertificationsContent(certificationsData);
+        setSatisfactionContent(satisfactionData);
       } catch (err) {
         setError('Failed to load content');
         console.error('Error fetching about content:', err);
@@ -106,7 +130,7 @@ const About: React.FC = () => {
                 fontSize: { xs: '1.25rem', md: '1.5rem' }
               }}
             >
-              Our Mission
+              {missionContent?.title || 'Our Mission'}
             </Typography>
             <Typography 
               variant="body1" 
@@ -116,8 +140,7 @@ const About: React.FC = () => {
                 fontSize: { xs: '0.95rem', md: '1rem' }
               }}
             >
-              To promote healthier living by providing access to authentic, organic wellness products 
-              that nourish the body and mind while supporting sustainable farming practices.
+              {missionContent?.content || 'To promote healthier living by providing access to authentic, organic wellness products that nourish the body and mind while supporting sustainable farming practices.'}
             </Typography>
 
             <Typography 
@@ -129,54 +152,22 @@ const About: React.FC = () => {
                 fontSize: { xs: '1.25rem', md: '1.5rem' }
               }}
             >
-              Our Values
+              {valuesContent?.title || 'Our Values'}
             </Typography>
-            <Box component="ul" sx={{ pl: { xs: 2, md: 3 } }}>
-              <Typography 
-                component="li" 
-                variant="body1" 
-                sx={{ 
-                  mb: 1,
-                  fontSize: { xs: '0.9rem', md: '1rem' },
-                  lineHeight: { xs: 1.5, md: 1.6 }
-                }}
-              >
-                <strong>Quality First:</strong> We source only the finest organic products
-              </Typography>
-              <Typography 
-                component="li" 
-                variant="body1" 
-                sx={{ 
-                  mb: 1,
-                  fontSize: { xs: '0.9rem', md: '1rem' },
-                  lineHeight: { xs: 1.5, md: 1.6 }
-                }}
-              >
-                <strong>Sustainability:</strong> Supporting eco-friendly farming practices
-              </Typography>
-              <Typography 
-                component="li" 
-                variant="body1" 
-                sx={{ 
-                  mb: 1,
-                  fontSize: { xs: '0.9rem', md: '1rem' },
-                  lineHeight: { xs: 1.5, md: 1.6 }
-                }}
-              >
-                <strong>Transparency:</strong> Clear information about product origins
-              </Typography>
-              <Typography 
-                component="li" 
-                variant="body1" 
-                sx={{ 
-                  mb: 1,
-                  fontSize: { xs: '0.9rem', md: '1rem' },
-                  lineHeight: { xs: 1.5, md: 1.6 }
-                }}
-              >
-                <strong>Customer Care:</strong> Dedicated to your wellness journey
-              </Typography>
-            </Box>
+            <Typography 
+              variant="body1" 
+              sx={{ 
+                lineHeight: { xs: 1.6, md: 1.8 }, 
+                mb: 3,
+                fontSize: { xs: '0.95rem', md: '1rem' },
+                whiteSpace: 'pre-line'
+              }}
+            >
+              {valuesContent?.content || `• Quality First: We source only the finest organic products
+• Sustainability: Supporting eco-friendly farming practices  
+• Transparency: Clear information about product origins
+• Customer Care: Dedicated to your wellness journey`}
+            </Typography>
           </Paper>
         </Grid>
 
@@ -190,7 +181,7 @@ const About: React.FC = () => {
                 fontSize: { xs: '1.1rem', md: '1.25rem' }
               }}
             >
-              Why Choose Organic?
+              {organicContent?.title || 'Why Choose Organic?'}
             </Typography>
             <Typography 
               variant="body2" 
@@ -199,8 +190,7 @@ const About: React.FC = () => {
                 fontSize: { xs: '0.85rem', md: '0.875rem' }
               }}
             >
-              Organic products are grown without harmful pesticides, synthetic fertilizers, 
-              or GMOs. They're not only better for your health but also for the environment.
+              {organicContent?.content || 'Organic products are grown without harmful pesticides, synthetic fertilizers, or GMOs. They\'re not only better for your health but also for the environment.'}
             </Typography>
           </Paper>
 
@@ -213,7 +203,7 @@ const About: React.FC = () => {
                 fontSize: { xs: '1.1rem', md: '1.25rem' }
               }}
             >
-              Our Certifications
+              {certificationsContent?.title || 'Our Certifications'}
             </Typography>
             <Typography 
               variant="body2" 
@@ -222,8 +212,7 @@ const About: React.FC = () => {
                 fontSize: { xs: '0.85rem', md: '0.875rem' }
               }}
             >
-              All our products are certified organic by recognized authorities, ensuring 
-              you receive genuine, high-quality wellness products.
+              {certificationsContent?.content || 'All our products are certified organic by recognized authorities, ensuring you receive genuine, high-quality wellness products.'}
             </Typography>
           </Paper>
 
@@ -236,7 +225,7 @@ const About: React.FC = () => {
                 fontSize: { xs: '1.1rem', md: '1.25rem' }
               }}
             >
-              Customer Satisfaction
+              {satisfactionContent?.title || 'Customer Satisfaction'}
             </Typography>
             <Typography 
               variant="body2" 
@@ -245,8 +234,7 @@ const About: React.FC = () => {
                 fontSize: { xs: '0.85rem', md: '0.875rem' }
               }}
             >
-              With thousands of happy customers, we take pride in our commitment to 
-              quality and service excellence.
+              {satisfactionContent?.content || 'With thousands of happy customers, we take pride in our commitment to quality and service excellence.'}
             </Typography>
           </Paper>
         </Grid>

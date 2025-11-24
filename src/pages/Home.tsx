@@ -18,6 +18,12 @@ import { Content, Category } from '../types';
 const Home: React.FC = () => {
   const [content, setContent] = useState<Content | null>(null);
   const [categories, setCategories] = useState<Category[]>([]);
+  const [deliveryContent, setDeliveryContent] = useState<Content | null>(null);
+  const [categoriesHeading, setCategoriesHeading] = useState<Content | null>(null);
+  const [featuresHeading, setFeaturesHeading] = useState<Content | null>(null);
+  const [feature1, setFeature1] = useState<Content | null>(null);
+  const [feature2, setFeature2] = useState<Content | null>(null);
+  const [feature3, setFeature3] = useState<Content | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string>('');
   const navigate = useNavigate();
@@ -25,12 +31,33 @@ const Home: React.FC = () => {
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const [homeContent, categoriesData] = await Promise.all([
+        const [
+          homeContent, 
+          categoriesData, 
+          deliveryData,
+          categoriesHeadingData,
+          featuresHeadingData,
+          feature1Data,
+          feature2Data,
+          feature3Data
+        ] = await Promise.all([
           contentAPI.get('home'),
-          categoriesAPI.getAll()
+          categoriesAPI.getAll(),
+          contentAPI.getSection('delivery', 'schedule'),
+          contentAPI.getSection('home', 'categories_heading').catch(() => null),
+          contentAPI.getSection('home', 'features_heading').catch(() => null),
+          contentAPI.getSection('home', 'feature_1').catch(() => null),
+          contentAPI.getSection('home', 'feature_2').catch(() => null),
+          contentAPI.getSection('home', 'feature_3').catch(() => null)
         ]);
         setContent(homeContent);
         setCategories(categoriesData);
+        setDeliveryContent(deliveryData);
+        setCategoriesHeading(categoriesHeadingData);
+        setFeaturesHeading(featuresHeadingData);
+        setFeature1(feature1Data);
+        setFeature2(feature2Data);
+        setFeature3(feature3Data);
       } catch (err) {
         setError('Failed to load content');
         console.error('Error fetching data:', err);
@@ -137,7 +164,7 @@ const Home: React.FC = () => {
             mb: { xs: 2, md: 3 }
           }}
         >
-          Our Product Categories
+          {categoriesHeading?.title || 'Our Product Categories'}
         </Typography>
         <Grid container spacing={{ xs: 2, md: 4 }} sx={{ mt: 1 }}>
           {categories.map((category) => (
@@ -213,7 +240,7 @@ const Home: React.FC = () => {
               mb: { xs: 3, md: 4 }
             }}
           >
-            Why Choose Akshayam Wellness?
+            {featuresHeading?.title || 'Why Choose Akshayam Wellness?'}
           </Typography>
           <Grid container spacing={{ xs: 3, md: 4 }} sx={{ mt: 1 }}>
             <Grid item xs={12} md={4}>
@@ -227,7 +254,7 @@ const Home: React.FC = () => {
                     mb: { xs: 1.5, md: 2 }
                   }}
                 >
-                  100% Organic
+                  {feature1?.title || '100% Organic'}
                 </Typography>
                 <Typography 
                   variant="body1"
@@ -236,7 +263,7 @@ const Home: React.FC = () => {
                     lineHeight: { xs: 1.5, md: 1.6 }
                   }}
                 >
-                  All our products are certified organic and are self products
+                  {feature1?.content || 'All our products are certified organic and are self products'}
                 </Typography>
               </Box>
             </Grid>
@@ -251,7 +278,7 @@ const Home: React.FC = () => {
                     mb: { xs: 1.5, md: 2 }
                   }}
                 >
-                  Quality Assured
+                  {feature2?.title || 'Quality Assured'}
                 </Typography>
                 <Typography 
                   variant="body1"
@@ -260,7 +287,7 @@ const Home: React.FC = () => {
                     lineHeight: { xs: 1.5, md: 1.6 }
                   }}
                 >
-                  Every product undergoes rigorous quality checks before reaching you
+                  {feature2?.content || 'Every product undergoes rigorous quality checks before reaching you'}
                 </Typography>
               </Box>
             </Grid>
@@ -275,7 +302,7 @@ const Home: React.FC = () => {
                     mb: { xs: 1.5, md: 2 }
                   }}
                 >
-                  Delivery Schedule
+                  {feature3?.title || 'Delivery Schedule'}
                 </Typography>
                 <Typography 
                   variant="body1"
@@ -284,7 +311,7 @@ const Home: React.FC = () => {
                     lineHeight: { xs: 1.5, md: 1.6 }
                   }}
                 >
-                  Orders should be placed before every Wednesday 6 PM and the shipment will be delivered on Sunday
+                  {feature3?.content || deliveryContent?.content || 'Orders should be placed before every Wednesday 6 PM and the shipment will be delivered on Sunday'}
                 </Typography>
               </Box>
             </Grid>

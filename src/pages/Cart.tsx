@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Container,
   Typography,
@@ -29,18 +29,20 @@ import {
   ShoppingCartOutlined,
   ArrowBack
 } from '@mui/icons-material';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { useCart } from '../contexts/CartContext';
-import { ordersAPI, stockAPI } from '../services/api';
+import { ordersAPI, stockAPI, contentAPI } from '../services/api';
 import { User, OrderItem, StockValidationItem, OrderCreateError } from '../types';
 
 const Cart: React.FC = () => {
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
   const navigate = useNavigate();
+  const location = useLocation();
   const [checkoutOpen, setCheckoutOpen] = useState(false);
   const [orderLoading, setOrderLoading] = useState(false);
   const [stockValidationErrors, setStockValidationErrors] = useState<string[]>([]);
+  const [deliveryContent, setDeliveryContent] = useState<any>(null);
   const [userInfo, setUserInfo] = useState<User & { password: string }>({
     name: '',
     email: '',
@@ -48,6 +50,12 @@ const Cart: React.FC = () => {
     address: '',
     password: ''
   });
+
+  // Get minimum order value from environment
+  const minOrderValue = Number(process.env.REACT_APP_MIN_ORDER_VALUE) || 500;
+  
+  // Check if this is an admin context (admin pages start with /adddmin)
+  const isAdminContext = location.pathname.startsWith('/adddmin');
 
   const {
     items,
@@ -57,6 +65,20 @@ const Cart: React.FC = () => {
     updateQuantity,
     clearCart
   } = useCart();
+
+  // Fetch delivery schedule content
+  useEffect(() => {
+    const fetchDeliveryContent = async () => {
+      try {
+        const deliveryData = await contentAPI.getSection('delivery', 'schedule');
+        setDeliveryContent(deliveryData);
+      } catch (err) {
+        console.error('Error fetching delivery content:', err);
+      }
+    };
+
+    fetchDeliveryContent();
+  }, []);
 
   const validateStock = async () => {
     if (items.length === 0) return true;
@@ -132,6 +154,12 @@ const Cart: React.FC = () => {
     if (items.length === 0) return;
     
     setStockValidationErrors([]);
+    
+    // Validate minimum order value for users (not admin)
+    if (!isAdminContext && total < minOrderValue) {
+      setStockValidationErrors([`Minimum order value is ₹${minOrderValue}. Current order total: ₹${total.toFixed(2)}`]);
+      return; // Don't open checkout dialog if minimum order value is not met
+    }
     
     try {
       // Validate stock when user clicks "Proceed to Checkout"
@@ -433,7 +461,7 @@ const Cart: React.FC = () => {
                 )}
 
                 <Alert severity="info" sx={{ mb: 3, fontSize: '0.875rem' }}>
-                  Orders should be placed before every Wednesday 6 PM and will be delivered on Sunday
+                  {deliveryContent?.content || 'Orders should be placed before every Wednesday 6 PM and will be delivered on Sunday'}
                 </Alert>
 
                 <Button

@@ -36,7 +36,7 @@ import {
   Search,
   Clear
 } from '@mui/icons-material';
-import { useSearchParams } from 'react-router-dom';
+import { useSearchParams, useLocation } from 'react-router-dom';
 import { productsAPI, categoriesAPI, ordersAPI, stockAPI } from '../services/api';
 import { useCart } from '../contexts/CartContext';
 import { Product, Category, User, OrderItem, StockValidationItem } from '../types';
@@ -61,6 +61,13 @@ const Products: React.FC = () => {
     password: ''
   });
   const [searchParams] = useSearchParams();
+  const location = useLocation();
+
+  // Get minimum order value from environment
+  const minOrderValue = Number(process.env.REACT_APP_MIN_ORDER_VALUE) || 500;
+  
+  // Check if this is an admin context (admin pages start with /adddmin)
+  const isAdminContext = location.pathname.startsWith('/adddmin');
   const {
     items,
     total,
@@ -130,6 +137,12 @@ const Products: React.FC = () => {
 
   const handleProceedToCheckout = async () => {
     if (items.length === 0) return;
+
+    // Validate minimum order value for users (not admin)
+    if (!isAdminContext && total < minOrderValue) {
+      setStockValidationErrors([`Minimum order value is ₹${minOrderValue}. Current order total: ₹${total.toFixed(2)}`]);
+      return; // Don't open checkout dialog if minimum order value is not met
+    }
 
     try {
       // Validate stock before proceeding to checkout

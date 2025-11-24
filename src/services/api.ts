@@ -56,12 +56,20 @@ export const authAPI = {
 export const categoriesAPI = {
   getAll: async (): Promise<Category[]> => {
     const response = await api.get('/categories');
-    return response.data;
+    // Sort by order field, then by creation date
+    return response.data.sort((a: Category, b: Category) => 
+      (a.order || 0) - (b.order || 0) || 
+      new Date(a.created_at || '').getTime() - new Date(b.created_at || '').getTime()
+    );
   },
   
   create: async (category: CategoryCreate): Promise<Category> => {
     const response = await api.post('/admin/categories', category);
     return response.data;
+  },
+  
+  reorder: async (items: {id: string; order: number}[]): Promise<void> => {
+    await api.put('/admin/categories/reorder', { items });
   },
   
   update: async (id: string, category: Partial<CategoryCreate>): Promise<Category> => {
@@ -90,7 +98,11 @@ export const productsAPI = {
   getAll: async (categoryId?: string): Promise<Product[]> => {
     const url = categoryId ? `/products?category_id=${categoryId}` : '/products';
     const response = await api.get(url);
-    return response.data;
+    // Sort by order field, then by creation date
+    return response.data.sort((a: Product, b: Product) => 
+      (a.order || 0) - (b.order || 0) || 
+      new Date(a.created_at || '').getTime() - new Date(b.created_at || '').getTime()
+    );
   },
   
   getById: async (id: string): Promise<Product> => {
@@ -101,6 +113,10 @@ export const productsAPI = {
   create: async (product: ProductCreate): Promise<Product> => {
     const response = await api.post('/admin/products', product);
     return response.data;
+  },
+  
+  reorder: async (items: {id: string; order: number}[]): Promise<void> => {
+    await api.put('/admin/products/reorder', { items });
   },
   
   update: async (id: string, product: Partial<ProductCreate>): Promise<Product> => {
@@ -306,6 +322,27 @@ export const uploadAPI = {
       headers: {
         'Content-Type': 'multipart/form-data',
       },
+    });
+    return response.data;
+  }
+};
+
+// System Settings API
+export const systemSettingsAPI = {
+  get: async (key: string): Promise<any> => {
+    const response = await api.get(`/settings/${key}`);
+    return response.data;
+  },
+  
+  getAll: async (): Promise<any[]> => {
+    const response = await api.get('/admin/settings');
+    return response.data;
+  },
+  
+  update: async (key: string, value: number, description?: string): Promise<any> => {
+    const response = await api.put(`/admin/settings/${key}`, { 
+      value, 
+      description 
     });
     return response.data;
   }

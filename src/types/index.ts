@@ -3,6 +3,7 @@ export interface Category {
   name: string;
   description: string;
   image_url?: string;
+  order?: number;
   created_at: string;
 }
 
@@ -14,6 +15,7 @@ export interface Product {
   price: number;
   quantity: number;
   image_url?: string;
+  order?: number;
   created_at: string;
 }
 
@@ -49,9 +51,11 @@ export interface User {
 export interface Content {
   _id: string;
   page: string;
+  section?: string;
   title: string;
   content: string;
   logo_url?: string;
+  created_at: string;
   updated_at: string;
 }
 
