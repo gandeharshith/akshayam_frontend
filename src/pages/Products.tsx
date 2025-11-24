@@ -37,9 +37,9 @@ import {
   Clear
 } from '@mui/icons-material';
 import { useSearchParams } from 'react-router-dom';
-import { productsAPI, categoriesAPI, ordersAPI } from '../services/api';
+import { productsAPI, categoriesAPI, ordersAPI, stockAPI } from '../services/api';
 import { useCart } from '../contexts/CartContext';
-import { Product, Category, User, OrderItem } from '../types';
+import { Product, Category, User, OrderItem, StockValidationItem } from '../types';
 
 const Products: React.FC = () => {
   const [products, setProducts] = useState<Product[]>([]);
@@ -52,6 +52,7 @@ const Products: React.FC = () => {
   const [cartOpen, setCartOpen] = useState(false);
   const [checkoutOpen, setCheckoutOpen] = useState(false);
   const [orderLoading, setOrderLoading] = useState(false);
+  const [stockValidationErrors, setStockValidationErrors] = useState<string[]>([]);
   const [userInfo, setUserInfo] = useState<User & { password: string }>({
     name: '',
     email: '',
@@ -124,6 +125,37 @@ const Products: React.FC = () => {
   const handleAddToCart = (product: Product) => {
     if (product.quantity > 0) {
       addItem(product);
+    }
+  };
+
+  const handleProceedToCheckout = async () => {
+    if (items.length === 0) return;
+
+    try {
+      // Validate stock before proceeding to checkout
+      const stockValidationItems: StockValidationItem[] = items.map(item => ({
+        product_id: item.product._id,
+        quantity: item.quantity
+      }));
+
+      const validationResult = await stockAPI.validateStock({
+        items: stockValidationItems
+      });
+
+      if (!validationResult.valid) {
+        // Stock validation failed, display errors
+        const errorMessages = validationResult.invalid_items.map(item => item.error);
+        setStockValidationErrors(errorMessages);
+        return; // Don't open checkout dialog if validation fails
+      }
+
+      // If validation passes, open checkout dialog
+      setStockValidationErrors([]);
+      setCartOpen(false);
+      setCheckoutOpen(true);
+    } catch (err) {
+      console.error('Error validating stock:', err);
+      alert('Error validating stock availability. Please try again.');
     }
   };
 
@@ -577,6 +609,21 @@ const Products: React.FC = () => {
                 ))}
               </List>
               <Divider sx={{ my: 2 }} />
+
+              {/* Stock Validation Errors */}
+              {stockValidationErrors.length > 0 && (
+                <Alert severity="warning" sx={{ mb: 2 }}>
+                  <Typography variant="body2" sx={{ fontWeight: 'bold', mb: 1 }}>
+                    Stock Availability Issues:
+                  </Typography>
+                  {stockValidationErrors.map((error, index) => (
+                    <Typography key={index} variant="body2" sx={{ fontSize: '0.875rem' }}>
+                      • {error}
+                    </Typography>
+                  ))}
+                </Alert>
+              )}
+
               <Typography 
                 variant="h6" 
                 sx={{ 
@@ -590,10 +637,7 @@ const Products: React.FC = () => {
               <Button
                 fullWidth
                 variant="contained"
-                onClick={() => {
-                  setCartOpen(false);
-                  setCheckoutOpen(true);
-                }}
+                onClick={handleProceedToCheckout}
                 sx={{
                   py: { xs: 1.5, md: 1 },
                   fontSize: { xs: '0.9rem', md: '0.875rem' }

@@ -31,8 +31,8 @@ import {
 } from '@mui/icons-material';
 import { Link, useNavigate } from 'react-router-dom';
 import { useCart } from '../contexts/CartContext';
-import { ordersAPI } from '../services/api';
-import { User, OrderItem } from '../types';
+import { ordersAPI, stockAPI } from '../services/api';
+import { User, OrderItem, StockValidationItem, OrderCreateError } from '../types';
 
 const Cart: React.FC = () => {
   const theme = useTheme();
@@ -40,6 +40,7 @@ const Cart: React.FC = () => {
   const navigate = useNavigate();
   const [checkoutOpen, setCheckoutOpen] = useState(false);
   const [orderLoading, setOrderLoading] = useState(false);
+  const [stockValidationErrors, setStockValidationErrors] = useState<string[]>([]);
   const [userInfo, setUserInfo] = useState<User & { password: string }>({
     name: '',
     email: '',
@@ -57,10 +58,39 @@ const Cart: React.FC = () => {
     clearCart
   } = useCart();
 
+  const validateStock = async () => {
+    if (items.length === 0) return true;
+
+    try {
+      const stockValidationItems: StockValidationItem[] = items.map(item => ({
+        product_id: item.product._id,
+        quantity: item.quantity
+      }));
+
+      const validationResult = await stockAPI.validateStock({
+        items: stockValidationItems
+      });
+
+      if (!validationResult.valid) {
+        const errorMessages = validationResult.invalid_items.map(item => item.error);
+        setStockValidationErrors(errorMessages);
+        return false;
+      }
+
+      setStockValidationErrors([]);
+      return true;
+    } catch (err) {
+      console.error('Error validating stock:', err);
+      setStockValidationErrors(['Unable to validate stock availability. Please try again.']);
+      return false;
+    }
+  };
+
   const handleCheckout = async () => {
     if (items.length === 0) return;
 
     setOrderLoading(true);
+    
     try {
       const orderItems: OrderItem[] = items.map(item => ({
         product_id: item.product._id,
@@ -77,14 +107,55 @@ const Cart: React.FC = () => {
 
       clearCart();
       setCheckoutOpen(false);
+      setStockValidationErrors([]);
       setUserInfo({ name: '', email: '', phone: '', address: '', password: '' });
       alert('Order placed successfully!');
       navigate('/my-orders');
-    } catch (err) {
+    } catch (err: any) {
       console.error('Error placing order:', err);
-      alert('Failed to place order. Please try again.');
+      
+      // Handle detailed stock validation errors from the backend
+      if (err.response?.status === 400 && err.response?.data?.errors) {
+        const backendErrors = err.response.data.errors;
+        setStockValidationErrors(Array.isArray(backendErrors) ? backendErrors : [backendErrors]);
+      } else if (err.response?.data?.detail?.errors) {
+        setStockValidationErrors(err.response.data.detail.errors);
+      } else {
+        setStockValidationErrors(['Failed to place order. Please try again.']);
+      }
     } finally {
       setOrderLoading(false);
+    }
+  };
+
+  const handleCheckoutOpen = async () => {
+    if (items.length === 0) return;
+    
+    setStockValidationErrors([]);
+    
+    try {
+      // Validate stock when user clicks "Proceed to Checkout"
+      const stockValidationItems: StockValidationItem[] = items.map(item => ({
+        product_id: item.product._id,
+        quantity: item.quantity
+      }));
+
+      const validationResult = await stockAPI.validateStock({
+        items: stockValidationItems
+      });
+
+      if (!validationResult.valid) {
+        const errorMessages = validationResult.invalid_items.map(item => item.error);
+        setStockValidationErrors(errorMessages);
+        return; // Don't open checkout dialog if validation fails
+      }
+
+      // If validation passes, open checkout dialog
+      setStockValidationErrors([]);
+      setCheckoutOpen(true);
+    } catch (err) {
+      console.error('Error validating stock:', err);
+      setStockValidationErrors(['Unable to validate stock availability. Please try again.']);
     }
   };
 
@@ -350,6 +421,17 @@ const Cart: React.FC = () => {
                   </Box>
                 </Box>
 
+                {/* Stock Validation Error Messages */}
+                {stockValidationErrors.length > 0 && (
+                  <Box sx={{ mb: 2 }}>
+                    {stockValidationErrors.map((error, index) => (
+                      <Alert key={index} severity="error" sx={{ mb: 1, fontSize: '0.875rem' }}>
+                        {error}
+                      </Alert>
+                    ))}
+                  </Box>
+                )}
+
                 <Alert severity="info" sx={{ mb: 3, fontSize: '0.875rem' }}>
                   Orders should be placed before every Wednesday 6 PM and will be delivered on Sunday
                 </Alert>
@@ -358,7 +440,7 @@ const Cart: React.FC = () => {
                   fullWidth
                   variant="contained"
                   size="large"
-                  onClick={() => setCheckoutOpen(true)}
+                  onClick={handleCheckoutOpen}
                   sx={{
                     py: { xs: 1.5, md: 1.5 },
                     fontSize: { xs: '1rem', md: '1rem' },
@@ -388,6 +470,17 @@ const Cart: React.FC = () => {
           Checkout
         </DialogTitle>
         <DialogContent sx={{ pb: 1 }}>
+          {/* Stock Validation Error Messages */}
+          {stockValidationErrors.length > 0 && (
+            <Box sx={{ mb: 2 }}>
+              {stockValidationErrors.map((error, index) => (
+                <Alert key={index} severity="error" sx={{ mb: 1 }}>
+                  {error}
+                </Alert>
+              ))}
+            </Box>
+          )}
+          
           <Grid container spacing={{ xs: 2, md: 2 }} sx={{ mt: { xs: 0.5, md: 1 } }}>
             <Grid item xs={12}>
               <TextField

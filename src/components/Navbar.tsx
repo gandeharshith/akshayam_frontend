@@ -16,7 +16,9 @@ import {
   ListItemIcon,
   useTheme,
   useMediaQuery,
-  Divider
+  Divider,
+  Snackbar,
+  Alert
 } from '@mui/material';
 import {
   ShoppingCart,
@@ -25,23 +27,29 @@ import {
   Info as InfoIcon,
   Store as StoreIcon,
   Assignment as OrdersIcon,
-  Close as CloseIcon
+  Close as CloseIcon,
+  MenuBook as RecipesIcon
 } from '@mui/icons-material';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { useCart } from '../contexts/CartContext';
+import { stockAPI } from '../services/api';
+import { StockValidationItem } from '../types';
 
 const Navbar: React.FC = () => {
-  const { itemCount } = useCart();
+  const { itemCount, items } = useCart();
   const navigate = useNavigate();
   const location = useLocation();
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('md'));
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [stockErrors, setStockErrors] = useState<string[]>([]);
+  const [showStockAlert, setShowStockAlert] = useState(false);
 
   const menuItems = [
     { text: 'Home', path: '/', icon: <HomeIcon /> },
     { text: 'About', path: '/about', icon: <InfoIcon /> },
     { text: 'Products', path: '/products', icon: <StoreIcon /> },
+    { text: 'Healthy Recipes', path: '/recipes', icon: <RecipesIcon /> },
     { text: 'My Orders', path: '/my-orders', icon: <OrdersIcon /> }
   ];
 
@@ -52,6 +60,46 @@ const Navbar: React.FC = () => {
   const handleMobileNavigation = (path: string) => {
     navigate(path);
     setMobileMenuOpen(false);
+  };
+
+  const handleCartClick = async () => {
+    // If cart is empty, just navigate to cart
+    if (items.length === 0) {
+      navigate('/cart');
+      return;
+    }
+
+    try {
+      // Validate stock when user clicks on cart icon
+      const stockValidationItems: StockValidationItem[] = items.map(item => ({
+        product_id: item.product._id,
+        quantity: item.quantity
+      }));
+
+      const validationResult = await stockAPI.validateStock({
+        items: stockValidationItems
+      });
+
+      if (!validationResult.valid) {
+        const errorMessages = validationResult.invalid_items.map(item => item.error);
+        setStockErrors(errorMessages);
+        setShowStockAlert(true);
+        // Still navigate to cart so user can see the errors and adjust quantities
+        navigate('/cart');
+      } else {
+        // If validation passes, navigate to cart normally
+        navigate('/cart');
+      }
+    } catch (err) {
+      console.error('Error validating stock:', err);
+      // Still navigate to cart even if validation fails
+      navigate('/cart');
+    }
+  };
+
+  const handleCloseStockAlert = () => {
+    setShowStockAlert(false);
+    setStockErrors([]);
   };
 
   return (
@@ -99,7 +147,7 @@ const Navbar: React.FC = () => {
             {/* Cart Icon */}
             <IconButton
               color="inherit"
-              onClick={() => navigate('/cart')}
+              onClick={handleCartClick}
               title="View Cart"
               sx={{ ml: isMobile ? 1 : 2 }}
             >
@@ -168,6 +216,36 @@ const Navbar: React.FC = () => {
           ))}
         </List>
       </Drawer>
+
+      {/* Stock Validation Alert */}
+      <Snackbar
+        open={showStockAlert}
+        autoHideDuration={5000}
+        onClose={handleCloseStockAlert}
+        anchorOrigin={{
+          vertical: 'top',
+          horizontal: 'center'
+        }}
+        sx={{ mt: 8 }} // Add margin to avoid navbar overlap
+      >
+        <Alert
+          onClose={handleCloseStockAlert}
+          severity="warning"
+          variant="filled"
+          sx={{ width: '100%' }}
+        >
+          <Box>
+            <Typography variant="body2" sx={{ fontWeight: 'bold', mb: 1 }}>
+              Stock Availability Issues:
+            </Typography>
+            {stockErrors.map((error, index) => (
+              <Typography key={index} variant="body2" sx={{ fontSize: '0.875rem' }}>
+                • {error}
+              </Typography>
+            ))}
+          </Box>
+        </Alert>
+      </Snackbar>
     </>
   );
 };

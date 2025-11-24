@@ -55,6 +55,16 @@ export interface Content {
   updated_at: string;
 }
 
+export interface Recipe {
+  _id: string;
+  name: string;
+  description: string;
+  image_url?: string;
+  pdf_url?: string;
+  created_at: string;
+  updated_at: string;
+}
+
 export interface CartItem {
   product: Product;
   quantity: number;
@@ -100,9 +110,50 @@ export interface ContentUpdate {
   content?: string;
 }
 
+export interface RecipeCreate {
+  name: string;
+  description: string;
+}
+
+export interface RecipeUpdate {
+  name?: string;
+  description?: string;
+}
+
 export interface OrderAnalytics {
   product_id: string;
   product_name: string;
   total_quantity: number;
   total_revenue: number;
+}
+
+// Stock validation types
+export interface StockValidationItem {
+  product_id: string;
+  quantity: number;
+}
+
+export interface StockValidationRequest {
+  items: StockValidationItem[];
+}
+
+export interface StockValidationResponse {
+  valid: boolean;
+  message: string;
+  invalid_items: StockValidationError[];
+}
+
+export interface StockValidationError {
+  product_id: string;
+  product_name?: string;
+  requested_quantity: number;
+  available_quantity: number;
+  error: string;
+}
+
+// Enhanced order create response with error details
+export interface OrderCreateError {
+  message: string;
+  errors: string[];
+  invalid_items: StockValidationError[];
 }

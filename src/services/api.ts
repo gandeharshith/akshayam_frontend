@@ -10,7 +10,9 @@ import {
   LoginRequest,
   LoginResponse,
   ContentUpdate,
-  OrderAnalytics
+  OrderAnalytics,
+  StockValidationRequest,
+  StockValidationResponse
 } from '../types';
 
 const API_BASE_URL = `${process.env.REACT_APP_API_URL || 'http://localhost:8000'}/api`;
@@ -43,6 +45,10 @@ export const authAPI = {
   
   isAuthenticated: (): boolean => {
     return !!localStorage.getItem('admin_token');
+  },
+  
+  getToken: (): string | null => {
+    return localStorage.getItem('admin_token');
   }
 };
 
@@ -114,6 +120,14 @@ export const productsAPI = {
         'Content-Type': 'multipart/form-data',
       },
     });
+    return response.data;
+  }
+};
+
+// Stock validation API
+export const stockAPI = {
+  validateStock: async (request: StockValidationRequest): Promise<StockValidationResponse> => {
+    const response = await api.post('/validate-stock', request);
     return response.data;
   }
 };
@@ -196,6 +210,50 @@ export const contentAPI = {
     const formData = new FormData();
     formData.append('file', file);
     const response = await api.post(`/admin/content/${page}/logo`, formData, {
+      headers: {
+        'Content-Type': 'multipart/form-data',
+      },
+    });
+    return response.data;
+  }
+};
+
+// Recipes API
+export const recipesAPI = {
+  getAll: async (): Promise<any[]> => {
+    const response = await api.get('/recipes');
+    return response.data;
+  },
+  
+  create: async (recipe: any): Promise<any> => {
+    const response = await api.post('/admin/recipes', recipe);
+    return response.data;
+  },
+  
+  update: async (id: string, recipe: any): Promise<any> => {
+    const response = await api.put(`/admin/recipes/${id}`, recipe);
+    return response.data;
+  },
+  
+  delete: async (id: string): Promise<void> => {
+    await api.delete(`/admin/recipes/${id}`);
+  },
+  
+  uploadImage: async (id: string, file: File): Promise<{url: string}> => {
+    const formData = new FormData();
+    formData.append('file', file);
+    const response = await api.post(`/admin/recipes/${id}/image`, formData, {
+      headers: {
+        'Content-Type': 'multipart/form-data',
+      },
+    });
+    return response.data;
+  },
+  
+  uploadPdf: async (id: string, file: File): Promise<{url: string}> => {
+    const formData = new FormData();
+    formData.append('file', file);
+    const response = await api.post(`/admin/recipes/${id}/pdf`, formData, {
       headers: {
         'Content-Type': 'multipart/form-data',
       },

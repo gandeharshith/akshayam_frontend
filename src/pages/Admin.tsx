@@ -47,6 +47,7 @@ import {
   authAPI,
   categoriesAPI,
   productsAPI,
+  recipesAPI,
   ordersAPI,
   contentAPI,
   contactAPI
@@ -56,8 +57,11 @@ import {
   Product,
   Order,
   Content,
+  Recipe,
   CategoryCreate,
   ProductCreate,
+  RecipeCreate,
+  RecipeUpdate,
   OrderAnalytics
 } from '../types';
 
@@ -80,6 +84,7 @@ const Admin: React.FC = () => {
   const [currentTab, setCurrentTab] = useState(0);
   const [categories, setCategories] = useState<Category[]>([]);
   const [products, setProducts] = useState<Product[]>([]);
+  const [recipes, setRecipes] = useState<Recipe[]>([]);
   const [orders, setOrders] = useState<Order[]>([]);
   const [analytics, setAnalytics] = useState<OrderAnalytics[]>([]);
   const [homeContent, setHomeContent] = useState<Content | null>(null);
@@ -91,12 +96,14 @@ const Admin: React.FC = () => {
   // Dialog states
   const [categoryDialogOpen, setCategoryDialogOpen] = useState(false);
   const [productDialogOpen, setProductDialogOpen] = useState(false);
+  const [recipeDialogOpen, setRecipeDialogOpen] = useState(false);
   const [contentDialogOpen, setContentDialogOpen] = useState(false);
   const [contactDialogOpen, setContactDialogOpen] = useState(false);
   const [orderDetailsOpen, setOrderDetailsOpen] = useState(false);
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
   const [editingCategory, setEditingCategory] = useState<Category | null>(null);
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
+  const [editingRecipe, setEditingRecipe] = useState<Recipe | null>(null);
   const [editingContent, setEditingContent] = useState<Content | null>(null);
   
   // Form states
@@ -114,6 +121,10 @@ const Admin: React.FC = () => {
   const [contentForm, setContentForm] = useState({
     title: '',
     content: ''
+  });
+  const [recipeForm, setRecipeForm] = useState<RecipeCreate>({
+    name: '',
+    description: ''
   });
   const [contactForm, setContactForm] = useState({
     company_name: '',
@@ -139,9 +150,10 @@ const Admin: React.FC = () => {
   const fetchData = async () => {
     setLoading(true);
     try {
-      const [categoriesData, productsData, ordersData, analyticsData, homeData, aboutData] = await Promise.all([
+      const [categoriesData, productsData, recipesData, ordersData, analyticsData, homeData, aboutData] = await Promise.all([
         categoriesAPI.getAll(),
         productsAPI.getAll(),
+        recipesAPI.getAll(),
         ordersAPI.getAll(),
         ordersAPI.getAnalytics(),
         contentAPI.get('home'),
@@ -149,6 +161,7 @@ const Admin: React.FC = () => {
       ]);
       setCategories(categoriesData);
       setProducts(productsData);
+      setRecipes(recipesData);
       setOrders(ordersData);
       setAnalytics(analyticsData);
       setHomeContent(homeData);
@@ -283,6 +296,72 @@ const Admin: React.FC = () => {
     }
   };
 
+  // Recipe management
+  const handleRecipeSubmit = async () => {
+    try {
+      if (editingRecipe) {
+        // Update existing recipe using recipesAPI
+        await recipesAPI.update(editingRecipe._id, recipeForm);
+      } else {
+        // Create new recipe using recipesAPI
+        await recipesAPI.create(recipeForm);
+      }
+      setRecipeDialogOpen(false);
+      setRecipeForm({ name: '', description: '' });
+      setEditingRecipe(null);
+      fetchRecipes();
+    } catch (err) {
+      console.error('Failed to save recipe:', err);
+    }
+  };
+
+  const handleRecipeDelete = async (id: string) => {
+    if (window.confirm('Are you sure you want to delete this recipe?')) {
+      try {
+        await recipesAPI.delete(id);
+        fetchRecipes();
+      } catch (err) {
+        console.error('Failed to delete recipe:', err);
+      }
+    }
+  };
+
+  const handleRecipeImageUpload = async (recipeId: string, file: File) => {
+    try {
+      await recipesAPI.uploadImage(recipeId, file);
+      fetchRecipes();
+    } catch (err) {
+      console.error('Failed to upload recipe image:', err);
+    }
+  };
+
+  const handleRecipePdfUpload = async (recipeId: string, file: File) => {
+    try {
+      await recipesAPI.uploadPdf(recipeId, file);
+      fetchRecipes();
+    } catch (err) {
+      console.error('Failed to upload recipe PDF:', err);
+    }
+  };
+
+  const editRecipe = (recipe: Recipe) => {
+    setEditingRecipe(recipe);
+    setRecipeForm({ name: recipe.name, description: recipe.description });
+    setRecipeDialogOpen(true);
+  };
+
+  const fetchRecipes = async () => {
+    try {
+      const response = await fetch(`${process.env.REACT_APP_API_URL || 'http://localhost:8000'}/api/recipes`);
+      if (response.ok) {
+        const recipesData = await response.json();
+        setRecipes(recipesData);
+      }
+    } catch (err) {
+      console.error('Failed to fetch recipes:', err);
+    }
+  };
+
   // Contact management
   const handleContactSubmit = async () => {
     try {
@@ -376,6 +455,7 @@ const Admin: React.FC = () => {
           >
             <Tab label={isMobile ? "Categories" : "Categories"} />
             <Tab label={isMobile ? "Products" : "Products"} />
+            <Tab label={isMobile ? "Recipes" : "Recipes"} />
             <Tab label={isMobile ? "Orders" : "Orders"} />
             <Tab label={isMobile ? "Analytics" : "Analytics"} />
             <Tab label={isMobile ? "Content" : "Content & Contact"} />
@@ -685,8 +765,182 @@ const Admin: React.FC = () => {
           )}
         </TabPanel>
 
-        {/* Orders Tab */}
+        {/* Recipes Tab */}
         <TabPanel value={currentTab} index={2}>
+          <Box sx={{ 
+            display: 'flex', 
+            flexDirection: isMobile ? 'column' : 'row',
+            justifyContent: 'space-between', 
+            alignItems: isMobile ? 'stretch' : 'center',
+            mb: 2,
+            gap: isMobile ? 2 : 0 
+          }}>
+            <Typography variant={isMobile ? "h6" : "h5"}>Recipes Management</Typography>
+            <Button
+              variant="contained"
+              startIcon={<Add />}
+              onClick={() => setRecipeDialogOpen(true)}
+              fullWidth={isMobile}
+              size={isMobile ? "large" : "medium"}
+            >
+              Add Recipe
+            </Button>
+          </Box>
+
+          {isMobile ? (
+            // Mobile Card Layout for Recipes
+            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+              {recipes.map((recipe) => (
+                <Card key={recipe._id} elevation={2}>
+                  <CardContent>
+                    <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', mb: 2 }}>
+                      <Box sx={{ flex: 1 }}>
+                        <Typography variant="h6" gutterBottom>{recipe.name}</Typography>
+                        <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
+                          {recipe.description.length > 100 
+                            ? `${recipe.description.substring(0, 100)}...` 
+                            : recipe.description}
+                        </Typography>
+                        <Typography variant="caption" color="text.secondary">
+                          Created: {formatDate(recipe.created_at)}
+                        </Typography>
+                        {recipe.pdf_url && (
+                          <Chip
+                            label="PDF Available"
+                            size="small"
+                            sx={{ mt: 1, display: 'block' }}
+                          />
+                        )}
+                      </Box>
+                      {recipe.image_url && (
+                        <img
+                          src={`${process.env.REACT_APP_API_URL || 'http://localhost:8000'}${recipe.image_url}`}
+                          alt={recipe.name}
+                          style={{ width: 60, height: 60, objectFit: 'cover', borderRadius: 8, marginLeft: 16 }}
+                        />
+                      )}
+                    </Box>
+                    <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                      <Box>
+                        <input
+                          type="file"
+                          accept="image/*"
+                          style={{ display: 'none' }}
+                          id={`recipe-image-${recipe._id}`}
+                          onChange={(e) => {
+                            const file = e.target.files?.[0];
+                            if (file) handleRecipeImageUpload(recipe._id, file);
+                          }}
+                        />
+                        <label htmlFor={`recipe-image-${recipe._id}`}>
+                          <Button component="span" size="small" startIcon={<PhotoCamera />}>
+                            {recipe.image_url ? 'Change Image' : 'Add Image'}
+                          </Button>
+                        </label>
+                      </Box>
+                      <Box>
+                        <IconButton onClick={() => editRecipe(recipe)} color="primary">
+                          <Edit />
+                        </IconButton>
+                        <IconButton onClick={() => handleRecipeDelete(recipe._id)} color="error">
+                          <Delete />
+                        </IconButton>
+                      </Box>
+                    </Box>
+                  </CardContent>
+                </Card>
+              ))}
+            </Box>
+          ) : (
+            // Desktop Table Layout for Recipes
+            <TableContainer component={Paper}>
+              <Table>
+                <TableHead>
+                  <TableRow>
+                    <TableCell>Name</TableCell>
+                    <TableCell>Description</TableCell>
+                    <TableCell>Image</TableCell>
+                    <TableCell>PDF</TableCell>
+                    <TableCell>Created</TableCell>
+                    <TableCell>Actions</TableCell>
+                  </TableRow>
+                </TableHead>
+                <TableBody>
+                  {recipes.map((recipe) => (
+                    <TableRow key={recipe._id}>
+                      <TableCell>{recipe.name}</TableCell>
+                      <TableCell>
+                        {recipe.description.length > 50 
+                          ? `${recipe.description.substring(0, 50)}...` 
+                          : recipe.description}
+                      </TableCell>
+                      <TableCell>
+                        {recipe.image_url ? (
+                          <img
+                            src={`${process.env.REACT_APP_API_URL || 'http://localhost:8000'}${recipe.image_url}`}
+                            alt={recipe.name}
+                            style={{ width: 50, height: 50, objectFit: 'cover' }}
+                          />
+                        ) : (
+                          'No image'
+                        )}
+                        <input
+                          type="file"
+                          accept="image/*"
+                          style={{ display: 'none' }}
+                          id={`recipe-image-${recipe._id}`}
+                          onChange={(e) => {
+                            const file = e.target.files?.[0];
+                            if (file) handleRecipeImageUpload(recipe._id, file);
+                          }}
+                        />
+                        <label htmlFor={`recipe-image-${recipe._id}`}>
+                          <IconButton component="span" size="small">
+                            <PhotoCamera />
+                          </IconButton>
+                        </label>
+                      </TableCell>
+                      <TableCell>
+                        {recipe.pdf_url ? (
+                          <Chip label="Available" color="success" size="small" />
+                        ) : (
+                          <Chip label="None" color="default" size="small" />
+                        )}
+                        <input
+                          type="file"
+                          accept=".pdf"
+                          style={{ display: 'none' }}
+                          id={`recipe-pdf-${recipe._id}`}
+                          onChange={(e) => {
+                            const file = e.target.files?.[0];
+                            if (file) handleRecipePdfUpload(recipe._id, file);
+                          }}
+                        />
+                        <label htmlFor={`recipe-pdf-${recipe._id}`}>
+                          <IconButton component="span" size="small" title="Upload PDF">
+                            <PhotoCamera />
+                          </IconButton>
+                        </label>
+                      </TableCell>
+                      <TableCell>{formatDate(recipe.created_at)}</TableCell>
+                      <TableCell>
+                        <IconButton onClick={() => editRecipe(recipe)}>
+                          <Edit />
+                        </IconButton>
+                        <IconButton onClick={() => handleRecipeDelete(recipe._id)}>
+                          <Delete />
+                        </IconButton>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </TableContainer>
+          )}
+        </TabPanel>
+
+        {/* Orders Tab */}
+        <TabPanel value={currentTab} index={3}>
           <Typography variant={isMobile ? "h6" : "h5"} sx={{ mb: 2 }}>Orders Management</Typography>
           
           {isMobile ? (
@@ -824,7 +1078,7 @@ const Admin: React.FC = () => {
         </TabPanel>
 
         {/* Analytics Tab */}
-        <TabPanel value={currentTab} index={3}>
+        <TabPanel value={currentTab} index={4}>
           <Typography variant={isMobile ? "h6" : "h5"} sx={{ mb: 2 }}>Analytics</Typography>
           
           <Grid container spacing={isMobile ? 2 : 3}>
@@ -896,7 +1150,7 @@ const Admin: React.FC = () => {
         </TabPanel>
 
         {/* Content & Contact Management Tab */}
-        <TabPanel value={currentTab} index={4}>
+        <TabPanel value={currentTab} index={5}>
           <Typography variant={isMobile ? "h6" : "h5"} sx={{ mb: 3 }}>Content & Contact Management</Typography>
           
           {/* Contact Information Section */}
@@ -1496,6 +1750,60 @@ const Admin: React.FC = () => {
             size={isMobile ? "large" : "medium"}
           >
             Update Contact Info
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* Recipe Dialog */}
+      <Dialog 
+        open={recipeDialogOpen} 
+        onClose={() => setRecipeDialogOpen(false)} 
+        maxWidth="sm" 
+        fullWidth
+        fullScreen={isMobile}
+      >
+        <DialogTitle>{editingRecipe ? 'Edit Recipe' : 'Add Recipe'}</DialogTitle>
+        <DialogContent sx={{ pb: isMobile ? 2 : 1 }}>
+          <TextField
+            fullWidth
+            label="Recipe Name"
+            value={recipeForm.name}
+            onChange={(e) => setRecipeForm({ ...recipeForm, name: e.target.value })}
+            sx={{ mt: 2, mb: 2 }}
+          />
+          <TextField
+            fullWidth
+            label="Description"
+            multiline
+            rows={isMobile ? 6 : 4}
+            value={recipeForm.description}
+            onChange={(e) => setRecipeForm({ ...recipeForm, description: e.target.value })}
+            placeholder="Enter detailed recipe instructions, ingredients, cooking time, etc."
+          />
+        </DialogContent>
+        <DialogActions sx={{ 
+          flexDirection: isMobile ? 'column' : 'row',
+          gap: isMobile ? 1 : 0,
+          p: isMobile ? 2 : 1
+        }}>
+          <Button 
+            onClick={() => {
+              setRecipeDialogOpen(false);
+              setEditingRecipe(null);
+              setRecipeForm({ name: '', description: '' });
+            }}
+            fullWidth={isMobile}
+            size={isMobile ? "large" : "medium"}
+          >
+            Cancel
+          </Button>
+          <Button 
+            onClick={handleRecipeSubmit} 
+            variant="contained"
+            fullWidth={isMobile}
+            size={isMobile ? "large" : "medium"}
+          >
+            {editingRecipe ? 'Update Recipe' : 'Create Recipe'}
           </Button>
         </DialogActions>
       </Dialog>
