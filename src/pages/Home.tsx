@@ -121,6 +121,8 @@ const CategoryCard: React.FC<{
   onNavigate: (categoryId: string) => void;
   delay?: number;
 }> = ({ category, onNavigate, delay = 0 }) => {
+  const theme = useTheme();
+  
   return (
     <Grow in={true} timeout={800} style={{ transitionDelay: `${delay}ms` }}>
       <Card
@@ -159,6 +161,19 @@ const CategoryCard: React.FC<{
             '& .category-arrow': {
               opacity: 1,
               transform: 'translateX(8px)',
+            }
+          },
+          // Ensure content is always visible on mobile
+          [theme.breakpoints.down('md')]: {
+            '& .category-content': {
+              backgroundColor: 'rgba(255,255,255,0.95)',
+              color: '#1a1a1a !important',
+              position: 'relative',
+              zIndex: 2,
+            },
+            '&:hover .category-content': {
+              backgroundColor: 'rgba(255,255,255,0.95)',
+              color: '#1a1a1a !important',
             }
           },
           '&:active': {

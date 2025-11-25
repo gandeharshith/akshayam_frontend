@@ -324,30 +324,32 @@ const Cart: React.FC = () => {
                         )}
                         
                         {/* Product Info */}
-                        <Box sx={{ flex: 1, minWidth: 0 }}>
-                          <ListItemText
-                            primary={
-                              <Typography 
-                                variant="h6" 
-                                sx={{ 
-                                  fontSize: { xs: '1rem', md: '1.1rem' },
-                                  fontWeight: 500,
-                                  mb: 0.5
-                                }}
-                              >
-                                {item.product.name}
-                              </Typography>
-                            }
-                            secondary={
-                              <Typography 
-                                variant="body2"
-                                color="text.secondary"
-                                sx={{ fontSize: { xs: '0.875rem', md: '0.875rem' } }}
-                              >
-                                ₹{item.product.price} each
-                              </Typography>
-                            }
-                          />
+                        <Box sx={{ 
+                          flex: 1, 
+                          minWidth: 0,
+                          width: isMobile ? '100%' : 'auto'
+                        }}>
+                          <Typography 
+                            variant="h6" 
+                            sx={{ 
+                              fontSize: { xs: '1rem', md: '1.1rem' },
+                              fontWeight: 500,
+                              mb: 0.5,
+                              lineHeight: 1.3
+                            }}
+                          >
+                            {item.product.name}
+                          </Typography>
+                          <Typography 
+                            variant="body2"
+                            color="text.secondary"
+                            sx={{ 
+                              fontSize: { xs: '0.875rem', md: '0.875rem' },
+                              mb: isMobile ? 1 : 0
+                            }}
+                          >
+                            ₹{item.product.price} each
+                          </Typography>
                         </Box>
 
                         {/* Quantity Controls */}
@@ -356,23 +358,35 @@ const Cart: React.FC = () => {
                           flexDirection: isMobile ? 'row' : 'row',
                           alignItems: 'center',
                           justifyContent: isMobile ? 'space-between' : 'flex-end',
-                          gap: 2,
-                          width: isMobile ? '100%' : 'auto'
+                          gap: isMobile ? 1 : 2,
+                          width: isMobile ? '100%' : 'auto',
+                          flexWrap: isMobile ? 'wrap' : 'nowrap'
                         }}>
-                          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                          <Box sx={{ 
+                            display: 'flex', 
+                            alignItems: 'center', 
+                            gap: 0.5,
+                            border: '1px solid',
+                            borderColor: 'divider',
+                            borderRadius: 1,
+                            px: 0.5
+                          }}>
                             <IconButton
                               size="small"
                               onClick={() => updateQuantity(item.product._id, item.quantity - 1)}
                               disabled={item.quantity <= 1}
+                              sx={{ p: 0.5 }}
                             >
-                              <Remove />
+                              <Remove fontSize="small" />
                             </IconButton>
                             <Typography 
                               sx={{ 
-                                minWidth: 40, 
+                                minWidth: 35, 
                                 textAlign: 'center',
-                                fontSize: { xs: '1rem', md: '1rem' },
-                                fontWeight: 500
+                                fontSize: { xs: '0.9rem', md: '1rem' },
+                                fontWeight: 500,
+                                px: 1,
+                                py: 0.5
                               }}
                             >
                               {item.quantity}
@@ -380,30 +394,46 @@ const Cart: React.FC = () => {
                             <IconButton
                               size="small"
                               onClick={() => updateQuantity(item.product._id, item.quantity + 1)}
+                              sx={{ p: 0.5 }}
                             >
-                              <Add />
+                              <Add fontSize="small" />
                             </IconButton>
                           </Box>
                           
-                          <Typography 
-                            variant="h6" 
-                            sx={{ 
-                              minWidth: 80,
-                              textAlign: 'right',
-                              fontSize: { xs: '1rem', md: '1.1rem' },
-                              fontWeight: 'bold'
-                            }}
-                          >
-                            ₹{(item.product.price * item.quantity).toFixed(2)}
-                          </Typography>
-                          
-                          <IconButton
-                            color="error"
-                            onClick={() => removeItem(item.product._id)}
-                            size={isMobile ? "medium" : "small"}
-                          >
-                            <Delete />
-                          </IconButton>
+                          <Box sx={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: 1,
+                            flexDirection: isMobile ? 'row' : 'row'
+                          }}>
+                            <Typography 
+                              variant="h6" 
+                              sx={{ 
+                                minWidth: isMobile ? 70 : 80,
+                                textAlign: 'right',
+                                fontSize: { xs: '0.95rem', md: '1.1rem' },
+                                fontWeight: 'bold',
+                                color: 'primary.main'
+                              }}
+                            >
+                              ₹{(item.product.price * item.quantity).toFixed(2)}
+                            </Typography>
+                            
+                            <IconButton
+                              color="error"
+                              onClick={() => removeItem(item.product._id)}
+                              size="small"
+                              sx={{ 
+                                p: { xs: 0.5, md: 1 },
+                                '&:hover': {
+                                  backgroundColor: 'error.light',
+                                  color: 'white'
+                                }
+                              }}
+                            >
+                              <Delete fontSize="small" />
+                            </IconButton>
+                          </Box>
                         </Box>
                       </ListItem>
                       {index < items.length - 1 && <Divider />}
