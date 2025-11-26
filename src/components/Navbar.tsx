@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   AppBar,
   Toolbar,
@@ -37,11 +37,11 @@ import {
 } from '@mui/icons-material';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { useCart } from '../contexts/CartContext';
-import { stockAPI } from '../services/api';
+import { stockAPI, systemSettingsAPI } from '../services/api';
 import { StockValidationItem } from '../types';
 
 const Navbar: React.FC = () => {
-  const { itemCount, items } = useCart();
+  const { itemCount, items, total, minOrderValue } = useCart();
   const navigate = useNavigate();
   const location = useLocation();
   const theme = useTheme();
@@ -49,6 +49,9 @@ const Navbar: React.FC = () => {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [stockErrors, setStockErrors] = useState<string[]>([]);
   const [showStockAlert, setShowStockAlert] = useState(false);
+
+  // Check if this is an admin context (admin pages start with /adddmin)
+  const isAdminContext = location.pathname.startsWith('/adddmin');
 
   const menuItems = [
     { text: 'Home', path: '/', icon: <HomeIcon />, description: 'Welcome page' },
@@ -74,6 +77,14 @@ const Navbar: React.FC = () => {
     }
 
     try {
+      // Check minimum order value for users (not admin)
+      if (!isAdminContext && total < minOrderValue) {
+        setStockErrors([`Minimum order value is ₹${minOrderValue}. Current order total: ₹${total.toFixed(2)}`]);
+        setShowStockAlert(true);
+        navigate('/cart');
+        return;
+      }
+
       const stockValidationItems: StockValidationItem[] = items.map(item => ({
         product_id: item.product._id,
         quantity: item.quantity

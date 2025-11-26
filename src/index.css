@@ -62,10 +62,18 @@ body {
     sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+  /* Enhanced text rendering for Android devices */
+  text-rendering: optimizeLegibility;
+  font-feature-settings: 'kern' 1;
+  font-kerning: normal;
+  /* Ensure better contrast on all devices */
   background-color: var(--background-default);
   color: var(--text-primary);
   line-height: 1.6;
   font-weight: 400;
+  /* Android-specific improvements */
+  -webkit-text-stroke: 0.01em rgba(0, 0, 0, 0.1);
+  text-shadow: 0 0 1px rgba(0, 0, 0, 0.1);
 }
 
 code {
@@ -151,12 +159,36 @@ h1, h2, h3, h4, h5, h6 {
   font-weight: 600;
   line-height: 1.2;
   color: var(--text-primary);
+  /* Enhanced visibility for all devices */
+  text-rendering: optimizeLegibility;
+  -webkit-font-feature-settings: 'kern' 1;
+  font-feature-settings: 'kern' 1;
 }
 
 p {
   margin: 0;
   line-height: 1.6;
   color: var(--text-primary);
+  /* Better text rendering for paragraphs */
+  text-rendering: optimizeLegibility;
+}
+
+/* Android-specific text improvements */
+@media screen and (-webkit-min-device-pixel-ratio: 2) {
+  /* High DPI Android devices */
+  body, h1, h2, h3, h4, h5, h6, p, span, div {
+    -webkit-font-smoothing: subpixel-antialiased;
+    -webkit-text-stroke: 0.005em rgba(0, 0, 0, 0.1);
+  }
+}
+
+/* Specific fixes for Android WebView */
+@supports (-webkit-appearance: none) {
+  .MuiTypography-root {
+    text-rendering: optimizeLegibility !important;
+    -webkit-font-smoothing: antialiased !important;
+    font-kerning: normal !important;
+  }
 }
 
 /* Utility classes */

@@ -64,7 +64,7 @@ const Products: React.FC = () => {
   const location = useLocation();
 
   // Get minimum order value from environment
-  const minOrderValue = Number(process.env.REACT_APP_MIN_ORDER_VALUE) || 500;
+  const { minOrderValue } = useCart();
   
   // Check if this is an admin context (admin pages start with /adddmin)
   const isAdminContext = location.pathname.startsWith('/adddmin');
@@ -430,15 +430,22 @@ const Products: React.FC = () => {
               )}
               <CardContent sx={{ 
                 flexGrow: 1,
-                p: { xs: 2, md: 2 }
+                p: { xs: 2.5, md: 2 },
+                pb: { xs: 1.5, md: 2 }
               }}>
                 <Typography 
                   variant="h6" 
                   component="h3" 
                   gutterBottom
                   sx={{
-                    fontSize: { xs: '1rem', md: '1.25rem' },
-                    lineHeight: 1.3
+                    fontSize: { xs: '1.1rem', md: '1.25rem' },
+                    lineHeight: 1.4,
+                    fontWeight: 600,
+                    color: 'text.primary',
+                    mb: { xs: 1.5, md: 1 },
+                    minHeight: { xs: '2.8rem', md: 'auto' },
+                    display: 'flex',
+                    alignItems: 'center'
                   }}
                 >
                   {product.name}
@@ -447,13 +454,14 @@ const Products: React.FC = () => {
                   variant="body2" 
                   color="text.secondary" 
                   sx={{ 
-                    mb: 2,
-                    fontSize: { xs: '0.875rem', md: '0.875rem' },
-                    lineHeight: 1.4,
+                    mb: { xs: 2, md: 2 },
+                    fontSize: { xs: '0.9rem', md: '0.875rem' },
+                    lineHeight: 1.5,
                     display: '-webkit-box',
                     WebkitLineClamp: 2,
                     WebkitBoxOrient: 'vertical',
-                    overflow: 'hidden'
+                    overflow: 'hidden',
+                    minHeight: { xs: '2.7rem', md: 'auto' }
                   }}
                 >
                   {product.description}
@@ -462,8 +470,9 @@ const Products: React.FC = () => {
                   variant="h6" 
                   color="primary.main"
                   sx={{
-                    fontSize: { xs: '1.1rem', md: '1.25rem' },
-                    fontWeight: 'bold'
+                    fontSize: { xs: '1.2rem', md: '1.25rem' },
+                    fontWeight: 'bold',
+                    mb: { xs: 1.5, md: 1 }
                   }}
                 >
                   ₹{product.price}
@@ -473,8 +482,10 @@ const Products: React.FC = () => {
                   color={product.quantity > 0 ? 'success' : 'error'}
                   size="small"
                   sx={{ 
-                    mt: 1,
-                    fontSize: { xs: '0.75rem', md: '0.75rem' }
+                    mt: { xs: 0.5, md: 1 },
+                    fontSize: { xs: '0.8rem', md: '0.75rem' },
+                    fontWeight: 500,
+                    px: 1
                   }}
                 />
               </CardContent>

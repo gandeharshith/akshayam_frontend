@@ -43,7 +43,6 @@ const Cart: React.FC = () => {
   const [orderLoading, setOrderLoading] = useState(false);
   const [stockValidationErrors, setStockValidationErrors] = useState<string[]>([]);
   const [deliveryContent, setDeliveryContent] = useState<any>(null);
-  const [minOrderValue, setMinOrderValue] = useState<number>(500); // Default fallback
   const [userInfo, setUserInfo] = useState<User & { password: string }>({
     name: '',
     email: '',
@@ -61,10 +60,11 @@ const Cart: React.FC = () => {
     itemCount,
     removeItem,
     updateQuantity,
-    clearCart
+    clearCart,
+    minOrderValue
   } = useCart();
 
-  // Fetch delivery schedule content and minimum order value
+  // Fetch delivery schedule content
   useEffect(() => {
     const fetchData = async () => {
       try {
@@ -73,15 +73,6 @@ const Cart: React.FC = () => {
         setDeliveryContent(deliveryData);
       } catch (err) {
         console.error('Error fetching delivery content:', err);
-      }
-
-      try {
-        // Fetch minimum order value from backend
-        const minOrderSetting = await systemSettingsAPI.get('minimum_order_value');
-        setMinOrderValue(minOrderSetting.value || 500);
-      } catch (err) {
-        console.error('Error fetching minimum order value:', err);
-        // Keep default value of 500 if fetch fails
       }
     };
 
@@ -332,10 +323,11 @@ const Cart: React.FC = () => {
                           <Typography 
                             variant="h6" 
                             sx={{ 
-                              fontSize: { xs: '1rem', md: '1.1rem' },
-                              fontWeight: 500,
+                              fontSize: { xs: '1.1rem', md: '1.1rem' },
+                              fontWeight: 600,
                               mb: 0.5,
-                              lineHeight: 1.3
+                              lineHeight: 1.4,
+                              color: 'text.primary'
                             }}
                           >
                             {item.product.name}
@@ -344,8 +336,9 @@ const Cart: React.FC = () => {
                             variant="body2"
                             color="text.secondary"
                             sx={{ 
-                              fontSize: { xs: '0.875rem', md: '0.875rem' },
-                              mb: isMobile ? 1 : 0
+                              fontSize: { xs: '0.9rem', md: '0.875rem' },
+                              mb: isMobile ? 1 : 0,
+                              fontWeight: 500
                             }}
                           >
                             ₹{item.product.price} each

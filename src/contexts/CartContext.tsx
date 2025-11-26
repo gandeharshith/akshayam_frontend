@@ -1,10 +1,12 @@
 import React, { createContext, useContext, useReducer, ReactNode, useEffect } from 'react';
 import { CartItem, Product } from '../types';
+import { systemSettingsAPI } from '../services/api';
 
 interface CartState {
   items: CartItem[];
   total: number;
   itemCount: number;
+  minOrderValue: number;
   notification: {
     open: boolean;
     message: string;
@@ -17,7 +19,8 @@ type CartAction =
   | { type: 'UPDATE_QUANTITY'; payload: { productId: string; quantity: number } }
   | { type: 'CLEAR_CART' }
   | { type: 'SHOW_NOTIFICATION'; payload: string }
-  | { type: 'HIDE_NOTIFICATION' };
+  | { type: 'HIDE_NOTIFICATION' }
+  | { type: 'SET_MIN_ORDER_VALUE'; payload: number };
 
 interface CartContextType extends CartState {
   addItem: (product: Product) => void;
@@ -41,7 +44,7 @@ const cartReducer = (state: CartState, action: CartAction): CartState => {
             : item
         );
         return {
-          ...calculateCartState(updatedItems),
+          ...calculateCartState(updatedItems, state.minOrderValue),
           notification: {
             open: true,
             message: `${action.payload.name} added to cart successfully!`
@@ -53,7 +56,7 @@ const cartReducer = (state: CartState, action: CartAction): CartState => {
           quantity: 1
         };
         return {
-          ...calculateCartState([...state.items, newItem]),
+          ...calculateCartState([...state.items, newItem], state.minOrderValue),
           notification: {
             open: true,
             message: `${action.payload.name} added to cart successfully!`
@@ -65,7 +68,7 @@ const cartReducer = (state: CartState, action: CartAction): CartState => {
     case 'REMOVE_ITEM': {
       const filteredItems = state.items.filter(item => item.product._id !== action.payload);
       return {
-        ...calculateCartState(filteredItems),
+        ...calculateCartState(filteredItems, state.minOrderValue),
         notification: state.notification
       };
     }
@@ -74,7 +77,7 @@ const cartReducer = (state: CartState, action: CartAction): CartState => {
       if (action.payload.quantity <= 0) {
         const filteredItems = state.items.filter(item => item.product._id !== action.payload.productId);
         return {
-          ...calculateCartState(filteredItems),
+          ...calculateCartState(filteredItems, state.minOrderValue),
           notification: state.notification
         };
       }
@@ -85,7 +88,7 @@ const cartReducer = (state: CartState, action: CartAction): CartState => {
           : item
       );
       return {
-        ...calculateCartState(updatedItems),
+        ...calculateCartState(updatedItems, state.minOrderValue),
         notification: state.notification
       };
     }
@@ -95,6 +98,7 @@ const cartReducer = (state: CartState, action: CartAction): CartState => {
         items: [], 
         total: 0, 
         itemCount: 0,
+        minOrderValue: state.minOrderValue,
         notification: { open: false, message: '' }
       };
     
@@ -116,15 +120,21 @@ const cartReducer = (state: CartState, action: CartAction): CartState => {
         }
       };
     
+    case 'SET_MIN_ORDER_VALUE':
+      return {
+        ...state,
+        minOrderValue: action.payload
+      };
+    
     default:
       return state;
   }
 };
 
-const calculateCartState = (items: CartItem[]) => {
+const calculateCartState = (items: CartItem[], minOrderValue: number) => {
   const total = items.reduce((sum, item) => sum + (item.product.price * item.quantity), 0);
   const itemCount = items.reduce((sum, item) => sum + item.quantity, 0);
-  return { items, total, itemCount };
+  return { items, total, itemCount, minOrderValue };
 };
 
 // Helper functions for localStorage
@@ -153,7 +163,7 @@ const loadCartFromStorage = (): CartItem[] => {
 const getInitialState = (): CartState => {
   const storedItems = loadCartFromStorage();
   return {
-    ...calculateCartState(storedItems),
+    ...calculateCartState(storedItems, 500), // Default minimum order value
     notification: { open: false, message: '' }
   };
 };
@@ -164,6 +174,22 @@ interface CartProviderProps {
 
 export const CartProvider: React.FC<CartProviderProps> = ({ children }) => {
   const [state, dispatch] = useReducer(cartReducer, getInitialState());
+
+  // Fetch minimum order value from backend on mount
+  useEffect(() => {
+    const fetchMinOrderValue = async () => {
+      try {
+        const minOrderSetting = await systemSettingsAPI.get('minimum_order_value');
+        dispatch({ type: 'SET_MIN_ORDER_VALUE', payload: minOrderSetting.value || 500 });
+      } catch (err) {
+        console.error('Error fetching minimum order value:', err);
+        // Keep default value of 500 if fetch fails
+        dispatch({ type: 'SET_MIN_ORDER_VALUE', payload: 500 });
+      }
+    };
+
+    fetchMinOrderValue();
+  }, []);
 
   // Save to localStorage whenever cart state changes
   useEffect(() => {
