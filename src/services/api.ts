@@ -7,6 +7,8 @@ import {
   CategoryCreate,
   ProductCreate,
   OrderCreate,
+  OrderEditRequest,
+  UserLogin,
   LoginRequest,
   LoginResponse,
   ContentUpdate,
@@ -170,12 +172,30 @@ export const ordersAPI = {
     return response.data;
   },
   
+  editOrder: async (id: string, orderEdit: OrderEditRequest, userLogin: UserLogin): Promise<Order> => {
+    const response = await api.put(`/orders/${id}/edit`, { ...orderEdit, ...userLogin });
+    return response.data;
+  },
+  
+  adminEditOrder: async (id: string, orderEdit: OrderEditRequest): Promise<Order> => {
+    const response = await api.put(`/admin/orders/${id}/edit`, orderEdit);
+    return response.data;
+  },
+  
   delete: async (id: string): Promise<void> => {
     await api.delete(`/admin/orders/${id}`);
   },
   
   getAnalytics: async (): Promise<OrderAnalytics[]> => {
     const response = await api.get('/admin/orders/analytics');
+    return response.data;
+  }
+};
+
+// User API
+export const userAPI = {
+  login: async (credentials: UserLogin): Promise<{ message: string; user_id: string }> => {
+    const response = await api.post('/user/login', credentials);
     return response.data;
   }
 };

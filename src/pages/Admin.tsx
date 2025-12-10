@@ -82,7 +82,9 @@ import {
   CategoryCreate,
   ProductCreate,
   RecipeCreate,
-  OrderAnalytics
+  OrderAnalytics,
+  OrderEditRequest,
+  OrderItem
 } from '../types';
 
 interface TabPanelProps {
@@ -420,7 +422,9 @@ const Admin: React.FC = () => {
   const [contentDialogOpen, setContentDialogOpen] = useState(false);
   const [contactDialogOpen, setContactDialogOpen] = useState(false);
   const [orderDetailsOpen, setOrderDetailsOpen] = useState(false);
+  const [orderEditDialogOpen, setOrderEditDialogOpen] = useState(false);
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
+  const [editingOrder, setEditingOrder] = useState<Order | null>(null);
   const [editingCategory, setEditingCategory] = useState<Category | null>(null);
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
   const [editingRecipe, setEditingRecipe] = useState<Recipe | null>(null);
@@ -461,6 +465,18 @@ const Admin: React.FC = () => {
   const [settingsForm, setSettingsForm] = useState({
     min_order_value: 500
   });
+
+  // Order editing states
+  const [editOrderItems, setEditOrderItems] = useState<any[]>([]);
+  const [editOrderUserInfo, setEditOrderUserInfo] = useState({
+    name: '',
+    email: '',
+    phone: '',
+    address: '',
+    password: ''
+  });
+  const [orderEditError, setOrderEditError] = useState('');
+  const [savingOrder, setSavingOrder] = useState(false);
 
   const navigate = useNavigate();
 
@@ -721,6 +737,157 @@ const Admin: React.FC = () => {
     } catch (err) {
       console.error(err);
     }
+  };
+
+  const canEditOrder = (order: Order) => {
+    return order.status === 'pending' || order.status === 'confirmed';
+  };
+
+  const handleEditOrder = (order: Order) => {
+    setEditingOrder(order);
+    setEditOrderItems([...order.items]);
+    setEditOrderUserInfo({
+      name: order.user_name,
+      email: order.user_email,
+      phone: order.user_phone,
+      address: order.user_address,
+      password: '' // Admin doesn't need the password field
+    });
+    setOrderEditError('');
+    setOrderEditDialogOpen(true);
+  };
+
+  const handleAddProductToOrder = () => {
+    if (products.length > 0) {
+      const firstProduct = products[0];
+      const newItem = {
+        product_id: firstProduct._id,
+        product_name: firstProduct.name,
+        quantity: 1,
+        price: firstProduct.price,
+        total: firstProduct.price
+      };
+      setEditOrderItems([...editOrderItems, newItem]);
+    }
+  };
+
+  const handleUpdateOrderItem = (index: number, field: string, value: any) => {
+    const newItems = [...editOrderItems];
+    newItems[index] = { ...newItems[index], [field]: value };
+    
+    if (field === 'product_id') {
+      const product = products.find(p => p._id === value);
+      if (product) {
+        newItems[index].product_name = product.name;
+        newItems[index].price = product.price;
+        newItems[index].total = product.price * newItems[index].quantity;
+      }
+    } else if (field === 'quantity') {
+      newItems[index].total = newItems[index].price * value;
+    }
+    
+    setEditOrderItems(newItems);
+  };
+
+  const handleRemoveOrderItem = (index: number) => {
+    const newItems = editOrderItems.filter((_, i) => i !== index);
+    setEditOrderItems(newItems);
+  };
+
+  const calculateOrderTotal = () => {
+    return editOrderItems.reduce((sum, item) => sum + item.total, 0);
+  };
+
+  const handleSaveOrderEdit = async () => {
+    if (editOrderItems.length === 0) {
+      setOrderEditError('Order must have at least one item');
+      return;
+    }
+
+    if (!editOrderUserInfo.name.trim() || !editOrderUserInfo.email.trim() || 
+        !editOrderUserInfo.phone.trim() || !editOrderUserInfo.address.trim()) {
+      setOrderEditError('All user information fields are required');
+      return;
+    }
+
+    setSavingOrder(true);
+    setOrderEditError('');
+    
+    try {
+      const orderEdit: OrderEditRequest = {
+        items: editOrderItems,
+        user_info: editOrderUserInfo
+      };
+
+      const updatedOrder = await ordersAPI.adminEditOrder(editingOrder!._id!, orderEdit);
+      
+      // Update the orders list
+      setOrders(orders.map(order => 
+        order._id === updatedOrder._id ? updatedOrder : order
+      ));
+      
+      setOrderEditDialogOpen(false);
+      setEditingOrder(null);
+    } catch (err: any) {
+      console.error('Error updating order:', err);
+      
+      // Ensure we always set a string error message, never an object
+      let errorMessage = 'Failed to update order. Please try again.';
+      
+      try {
+        if (err.response?.data) {
+          if (typeof err.response.data === 'string') {
+            errorMessage = err.response.data;
+          } else if (err.response.data.detail) {
+            if (typeof err.response.data.detail === 'string') {
+              errorMessage = err.response.data.detail;
+            } else if (Array.isArray(err.response.data.detail)) {
+              // Handle validation errors array - ensure each item is converted to string
+              const messages = err.response.data.detail.map((error: any) => {
+                if (typeof error === 'string') {
+                  return error;
+                } else if (error && typeof error === 'object') {
+                  return error.msg || error.message || 'Validation error';
+                } else {
+                  return String(error);
+                }
+              });
+              errorMessage = messages.length > 0 ? messages.join(', ') : 'Validation error occurred';
+            } else if (typeof err.response.data.detail === 'object') {
+              // Convert object to string safely
+              errorMessage = 'Validation error: Please check your input';
+            } else {
+              errorMessage = String(err.response.data.detail);
+            }
+          } else if (err.response.data.message) {
+            errorMessage = String(err.response.data.message);
+          } else {
+            errorMessage = 'Failed to update order. Please check your input and try again.';
+          }
+        } else if (err.message) {
+          errorMessage = String(err.message);
+        }
+      } catch (parseError) {
+        // If parsing fails for any reason, use default message
+        console.error('Error parsing error message:', parseError);
+        errorMessage = 'Failed to update order. Please try again.';
+      }
+      
+      // Final safety check - ensure errorMessage is always a string
+      if (typeof errorMessage !== 'string') {
+        errorMessage = 'Failed to update order. Please try again.';
+      }
+      
+      setOrderEditError(errorMessage);
+    } finally {
+      setSavingOrder(false);
+    }
+  };
+
+  const handleCloseOrderEdit = () => {
+    setOrderEditDialogOpen(false);
+    setEditingOrder(null);
+    setOrderEditError('');
   };
 
   const handleOrderDelete = async (id: string) => {
@@ -1282,7 +1449,7 @@ const Admin: React.FC = () => {
                     <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', mb: 2 }}>
                       <Box sx={{ flex: 1 }}>
                         <Typography variant="h6" gutterBottom>
-                          Order #{order._id.slice(-8).toUpperCase()}
+                          Order #{order._id?.slice(-8).toUpperCase()}
                         </Typography>
                         <Typography variant="body2" sx={{ mb: 1 }}>
                           <strong>Customer:</strong> {order.user_name}
@@ -1311,7 +1478,7 @@ const Admin: React.FC = () => {
                         <InputLabel>Status</InputLabel>
                         <Select
                           value={order.status}
-                          onChange={(e) => handleOrderStatusUpdate(order._id, e.target.value)}
+                          onChange={(e) => order._id && handleOrderStatusUpdate(order._id, e.target.value)}
                           label="Status"
                         >
                           <MenuItem value="pending">Pending</MenuItem>
@@ -1332,13 +1499,24 @@ const Admin: React.FC = () => {
                         >
                           <Visibility />
                         </IconButton>
-                        <IconButton 
-                          onClick={() => handleOrderDelete(order._id)} 
-                          color="error"
-                          title="Delete Order"
-                        >
-                          <Delete />
-                        </IconButton>
+                        {canEditOrder(order) && order._id && (
+                          <IconButton 
+                            onClick={() => handleEditOrder(order)}
+                            color="secondary"
+                            title="Edit Order"
+                          >
+                            <Edit />
+                          </IconButton>
+                        )}
+                        {order._id && (
+                          <IconButton 
+                            onClick={() => handleOrderDelete(order._id!)} 
+                            color="error"
+                            title="Delete Order"
+                          >
+                            <Delete />
+                          </IconButton>
+                        )}
                       </Box>
                     </Box>
                   </CardContent>
@@ -1363,7 +1541,7 @@ const Admin: React.FC = () => {
                 <TableBody>
                   {orders.map((order) => (
                     <TableRow key={order._id}>
-                      <TableCell>#{order._id.slice(-8).toUpperCase()}</TableCell>
+                      <TableCell>#{order._id?.slice(-8).toUpperCase()}</TableCell>
                       <TableCell>
                         <div>{order.user_name}</div>
                         <div style={{ fontSize: '0.8em', color: 'gray' }}>{order.user_email}</div>
@@ -1374,7 +1552,7 @@ const Admin: React.FC = () => {
                         <FormControl size="small" sx={{ minWidth: 120 }}>
                           <Select
                             value={order.status}
-                            onChange={(e) => handleOrderStatusUpdate(order._id, e.target.value)}
+                            onChange={(e) => order._id && handleOrderStatusUpdate(order._id, e.target.value)}
                           >
                             <MenuItem value="pending">Pending</MenuItem>
                             <MenuItem value="confirmed">Confirmed</MenuItem>
@@ -1395,9 +1573,20 @@ const Admin: React.FC = () => {
                         >
                           <Visibility />
                         </IconButton>
-                        <IconButton onClick={() => handleOrderDelete(order._id)} title="Delete Order">
-                          <Delete />
-                        </IconButton>
+                        {canEditOrder(order) && (
+                          <IconButton 
+                            onClick={() => handleEditOrder(order)}
+                            title="Edit Order"
+                            color="secondary"
+                          >
+                            <Edit />
+                          </IconButton>
+                        )}
+                        {order._id && (
+                          <IconButton onClick={() => handleOrderDelete(order._id!)} title="Delete Order">
+                            <Delete />
+                          </IconButton>
+                        )}
                       </TableCell>
                     </TableRow>
                   ))}
@@ -2261,7 +2450,7 @@ const Admin: React.FC = () => {
         <DialogTitle sx={{ pb: 1 }}>
           <Box sx={{ display: 'flex', flexDirection: isMobile ? 'column' : 'row', alignItems: isMobile ? 'flex-start' : 'center', gap: 1 }}>
             <Typography variant="h6" component="span">
-              Order Details - #{selectedOrder?._id.slice(-8).toUpperCase()}
+              Order Details - #{selectedOrder?._id?.slice(-8).toUpperCase()}
             </Typography>
             <Chip
               label={selectedOrder?.status ? selectedOrder.status.charAt(0).toUpperCase() + selectedOrder.status.slice(1) : 'Unknown'}
@@ -2363,8 +2552,10 @@ const Admin: React.FC = () => {
               <Select
                 value={selectedOrder.status}
                 onChange={(e) => {
-                  handleOrderStatusUpdate(selectedOrder._id, e.target.value);
-                  setSelectedOrder({ ...selectedOrder, status: e.target.value });
+                  if (selectedOrder._id) {
+                    handleOrderStatusUpdate(selectedOrder._id, e.target.value);
+                    setSelectedOrder({ ...selectedOrder, status: e.target.value });
+                  }
                 }}
                 size="small"
                 label="Status"
@@ -2511,6 +2702,191 @@ const Admin: React.FC = () => {
             size={isMobile ? "large" : "medium"}
           >
             {editingRecipe ? 'Update Recipe' : 'Create Recipe'}
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* Order Edit Dialog */}
+      <Dialog 
+        open={orderEditDialogOpen} 
+        onClose={handleCloseOrderEdit}
+        maxWidth="md" 
+        fullWidth
+        fullScreen={isMobile}
+      >
+        <DialogTitle>Edit Order - #{editingOrder?._id?.slice(-8).toUpperCase()}</DialogTitle>
+        <DialogContent sx={{ pb: isMobile ? 2 : 1 }}>
+          {orderEditError && (
+            <Alert severity="error" sx={{ mb: 2 }}>
+              {orderEditError}
+            </Alert>
+          )}
+          
+          {/* User Information Section */}
+          <Typography variant="h6" gutterBottom sx={{ mt: 2 }}>Customer Information</Typography>
+          <Grid container spacing={2} sx={{ mb: 3 }}>
+            <Grid item xs={12} md={6}>
+              <TextField
+                fullWidth
+                label="Customer Name"
+                value={editOrderUserInfo.name}
+                onChange={(e) => setEditOrderUserInfo({ ...editOrderUserInfo, name: e.target.value })}
+                size="small"
+              />
+            </Grid>
+            <Grid item xs={12} md={6}>
+              <TextField
+                fullWidth
+                label="Email"
+                type="email"
+                value={editOrderUserInfo.email}
+                onChange={(e) => setEditOrderUserInfo({ ...editOrderUserInfo, email: e.target.value })}
+                size="small"
+              />
+            </Grid>
+            <Grid item xs={12} md={6}>
+              <TextField
+                fullWidth
+                label="Phone"
+                value={editOrderUserInfo.phone}
+                onChange={(e) => setEditOrderUserInfo({ ...editOrderUserInfo, phone: e.target.value })}
+                size="small"
+              />
+            </Grid>
+            <Grid item xs={12} md={6}>
+              <TextField
+                fullWidth
+                label="Address"
+                value={editOrderUserInfo.address}
+                onChange={(e) => setEditOrderUserInfo({ ...editOrderUserInfo, address: e.target.value })}
+                multiline
+                rows={2}
+                size="small"
+              />
+            </Grid>
+          </Grid>
+
+          {/* Order Items Section */}
+          <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
+            <Typography variant="h6">Order Items</Typography>
+            <Button
+              variant="outlined"
+              size="small"
+              startIcon={<Add />}
+              onClick={handleAddProductToOrder}
+              disabled={products.length === 0}
+            >
+              Add Item
+            </Button>
+          </Box>
+
+          {editOrderItems.length === 0 ? (
+            <Alert severity="warning" sx={{ mb: 2 }}>
+              Order must have at least one item
+            </Alert>
+          ) : (
+            <TableContainer component={Paper} sx={{ mb: 2, maxHeight: isMobile ? 300 : 400 }}>
+              <Table size="small">
+                <TableHead>
+                  <TableRow>
+                    <TableCell>Product</TableCell>
+                    <TableCell align="center" sx={{ minWidth: 80 }}>Qty</TableCell>
+                    {!isMobile && <TableCell align="right">Price</TableCell>}
+                    <TableCell align="right">Total</TableCell>
+                    <TableCell align="center">Actions</TableCell>
+                  </TableRow>
+                </TableHead>
+                <TableBody>
+                  {editOrderItems.map((item, index) => (
+                    <TableRow key={index}>
+                      <TableCell>
+                        <FormControl fullWidth size="small">
+                          <Select
+                            value={item.product_id}
+                            onChange={(e) => handleUpdateOrderItem(index, 'product_id', e.target.value)}
+                          >
+                            {products.map((product) => (
+                              <MenuItem key={product._id} value={product._id}>
+                                {product.name} (₹{product.price})
+                              </MenuItem>
+                            ))}
+                          </Select>
+                        </FormControl>
+                      </TableCell>
+                      <TableCell align="center">
+                        <TextField
+                          type="number"
+                          value={item.quantity}
+                          onChange={(e) => handleUpdateOrderItem(index, 'quantity', parseInt(e.target.value) || 1)}
+                          size="small"
+                          inputProps={{ min: 1, style: { textAlign: 'center' } }}
+                          sx={{ width: 70 }}
+                        />
+                      </TableCell>
+                      {!isMobile && (
+                        <TableCell align="right">
+                          ₹{item.price.toFixed(2)}
+                        </TableCell>
+                      )}
+                      <TableCell align="right">
+                        <Typography variant="body2" sx={{ fontWeight: 'medium' }}>
+                          ₹{item.total.toFixed(2)}
+                        </Typography>
+                        {isMobile && (
+                          <Typography variant="caption" color="text.secondary">
+                            ₹{item.price.toFixed(2)} each
+                          </Typography>
+                        )}
+                      </TableCell>
+                      <TableCell align="center">
+                        <IconButton
+                          onClick={() => handleRemoveOrderItem(index)}
+                          color="error"
+                          size="small"
+                          disabled={editOrderItems.length === 1}
+                        >
+                          <Delete />
+                        </IconButton>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                  <TableRow>
+                    <TableCell colSpan={isMobile ? 3 : 4}>
+                      <Typography variant="h6">Total Amount:</Typography>
+                    </TableCell>
+                    <TableCell align="right">
+                      <Typography variant="h6" color="primary">
+                        ₹{calculateOrderTotal().toFixed(2)}
+                      </Typography>
+                    </TableCell>
+                  </TableRow>
+                </TableBody>
+              </Table>
+            </TableContainer>
+          )}
+        </DialogContent>
+        <DialogActions sx={{ 
+          flexDirection: isMobile ? 'column' : 'row',
+          gap: isMobile ? 1 : 0,
+          p: isMobile ? 2 : 1
+        }}>
+          <Button 
+            onClick={handleCloseOrderEdit}
+            fullWidth={isMobile}
+            size={isMobile ? "large" : "medium"}
+            disabled={savingOrder}
+          >
+            Cancel
+          </Button>
+          <Button 
+            onClick={handleSaveOrderEdit}
+            variant="contained"
+            fullWidth={isMobile}
+            size={isMobile ? "large" : "medium"}
+            disabled={savingOrder || editOrderItems.length === 0}
+            startIcon={savingOrder ? <CircularProgress size={16} /> : <Edit />}
+          >
+            {savingOrder ? 'Saving...' : 'Save Changes'}
           </Button>
         </DialogActions>
       </Dialog>

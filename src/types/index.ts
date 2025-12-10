@@ -28,7 +28,7 @@ export interface OrderItem {
 }
 
 export interface Order {
-  _id: string;
+  _id?: string;
   user_id: string;
   user_name: string;
   user_email: string;
@@ -39,6 +39,22 @@ export interface Order {
   status: string;
   created_at: string;
   updated_at: string;
+}
+
+export interface OrderEditRequest {
+  items: OrderItem[];
+  user_info?: {
+    name: string;
+    email: string;
+    phone: string;
+    address: string;
+    password: string;
+  };
+}
+
+export interface UserLogin {
+  email: string;
+  password: string;
 }
 
 export interface User {
