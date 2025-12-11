@@ -186,8 +186,43 @@ export const ordersAPI = {
     await api.delete(`/admin/orders/${id}`);
   },
   
-  getAnalytics: async (): Promise<OrderAnalytics[]> => {
-    const response = await api.get('/admin/orders/analytics');
+  getAnalytics: async (
+    startDate?: string, 
+    endDate?: string, 
+    groupBy?: 'product' | 'week' | 'month'
+  ): Promise<OrderAnalytics[]> => {
+    const params = new URLSearchParams();
+    if (startDate) params.append('start_date', startDate);
+    if (endDate) params.append('end_date', endDate);
+    if (groupBy) params.append('group_by', groupBy);
+    
+    const queryString = params.toString();
+    const url = queryString ? `/admin/orders/analytics?${queryString}` : '/admin/orders/analytics';
+    
+    const response = await api.get(url);
+    return response.data;
+  },
+
+  getSummary: async (
+    startDate?: string, 
+    endDate?: string
+  ): Promise<{
+    total_orders: number;
+    total_revenue: number;
+    avg_order_value: number;
+    total_items_sold: number;
+    min_order_value: number;
+    max_order_value: number;
+    status_counts: Record<string, number>;
+  }> => {
+    const params = new URLSearchParams();
+    if (startDate) params.append('start_date', startDate);
+    if (endDate) params.append('end_date', endDate);
+    
+    const queryString = params.toString();
+    const url = queryString ? `/admin/orders/summary?${queryString}` : '/admin/orders/summary';
+    
+    const response = await api.get(url);
     return response.data;
   }
 };

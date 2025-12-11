@@ -145,6 +145,8 @@ export interface OrderAnalytics {
   product_name: string;
   total_quantity: number;
   total_revenue: number;
+  period?: string; // For weekly/monthly grouping
+  order_count?: number; // For time-based analytics
 }
 
 // Stock validation types

@@ -430,6 +430,21 @@ const Admin: React.FC = () => {
   const [editingRecipe, setEditingRecipe] = useState<Recipe | null>(null);
   const [editingContent, setEditingContent] = useState<Content | null>(null);
   
+  // Enhanced Analytics states
+  const [analyticsStartDate, setAnalyticsStartDate] = useState<string>('');
+  const [analyticsEndDate, setAnalyticsEndDate] = useState<string>('');
+  const [analyticsGroupBy, setAnalyticsGroupBy] = useState<'product' | 'week' | 'month'>('product');
+  const [analyticsLoading, setAnalyticsLoading] = useState(false);
+  const [orderSummary, setOrderSummary] = useState<any>({
+    total_orders: 0,
+    total_revenue: 0,
+    avg_order_value: 0,
+    total_items_sold: 0,
+    min_order_value: 0,
+    max_order_value: 0,
+    status_counts: {}
+  });
+  
   // Form states
   const [categoryForm, setCategoryForm] = useState<CategoryCreate>({
     name: '',
@@ -633,6 +648,34 @@ const Admin: React.FC = () => {
       setSettingsForm({ min_order_value: 500 });
     }
   };
+
+  // Enhanced Analytics data fetching
+  const fetchAnalyticsData = async () => {
+    setAnalyticsLoading(true);
+    try {
+      // Fetch analytics with date filtering and grouping
+      const [analyticsData, summaryData] = await Promise.all([
+        ordersAPI.getAnalytics(analyticsStartDate, analyticsEndDate, analyticsGroupBy),
+        ordersAPI.getSummary(analyticsStartDate, analyticsEndDate)
+      ]);
+      
+      setAnalytics(analyticsData);
+      setOrderSummary(summaryData);
+    } catch (err) {
+      console.error('Failed to fetch analytics data:', err);
+      setError('Failed to fetch analytics data');
+      setTimeout(() => setError(''), 5000);
+    } finally {
+      setAnalyticsLoading(false);
+    }
+  };
+
+  // Initialize analytics on component mount
+  useEffect(() => {
+    if (orders.length > 0) {
+      fetchAnalyticsData();
+    }
+  }, [orders]);
 
   // System Settings management
   const handleSystemSettingsSubmit = async () => {
@@ -1598,37 +1641,210 @@ const Admin: React.FC = () => {
 
         {/* Analytics Tab */}
         <TabPanel value={currentTab} index={4}>
-          <Typography variant={isMobile ? "h6" : "h5"} sx={{ mb: 2 }}>Analytics</Typography>
-          
-          <Grid container spacing={isMobile ? 2 : 3}>
-            <Grid item xs={12} sm={6}>
+          <Box sx={{ 
+            display: 'flex', 
+            flexDirection: isMobile ? 'column' : 'row',
+            justifyContent: 'space-between', 
+            alignItems: isMobile ? 'stretch' : 'center',
+            mb: 3,
+            gap: isMobile ? 2 : 0 
+          }}>
+            <Typography variant={isMobile ? "h6" : "h5"}>Enhanced Analytics Dashboard</Typography>
+            <Button
+              variant="contained"
+              onClick={fetchAnalyticsData}
+              disabled={analyticsLoading}
+              startIcon={analyticsLoading ? <CircularProgress size={16} /> : undefined}
+              fullWidth={isMobile}
+              size={isMobile ? "large" : "medium"}
+            >
+              {analyticsLoading ? 'Loading...' : 'Refresh Data'}
+            </Button>
+          </Box>
+
+          {/* Analytics Filters */}
+          <Card sx={{ mb: 3 }}>
+            <CardContent>
+              <Typography variant="h6" gutterBottom>Analytics Filters</Typography>
+              <Grid container spacing={2} alignItems="center">
+                <Grid item xs={12} sm={6} md={3}>
+                  <TextField
+                    fullWidth
+                    label="Start Date"
+                    type="date"
+                    value={analyticsStartDate}
+                    onChange={(e) => setAnalyticsStartDate(e.target.value)}
+                    InputLabelProps={{ shrink: true }}
+                    size="small"
+                  />
+                </Grid>
+                <Grid item xs={12} sm={6} md={3}>
+                  <TextField
+                    fullWidth
+                    label="End Date"
+                    type="date"
+                    value={analyticsEndDate}
+                    onChange={(e) => setAnalyticsEndDate(e.target.value)}
+                    InputLabelProps={{ shrink: true }}
+                    size="small"
+                  />
+                </Grid>
+                <Grid item xs={12} sm={6} md={3}>
+                  <FormControl fullWidth size="small">
+                    <InputLabel>Group By</InputLabel>
+                    <Select
+                      value={analyticsGroupBy}
+                      onChange={(e) => setAnalyticsGroupBy(e.target.value as 'product' | 'week' | 'month')}
+                      label="Group By"
+                    >
+                      <MenuItem value="product">By Product</MenuItem>
+                      <MenuItem value="week">By Week</MenuItem>
+                      <MenuItem value="month">By Month</MenuItem>
+                    </Select>
+                  </FormControl>
+                </Grid>
+                <Grid item xs={12} sm={6} md={3}>
+                  <Button
+                    fullWidth
+                    variant="outlined"
+                    onClick={fetchAnalyticsData}
+                    disabled={analyticsLoading}
+                    size={isMobile ? "large" : "small"}
+                  >
+                    Apply Filters
+                  </Button>
+                </Grid>
+              </Grid>
+            </CardContent>
+          </Card>
+
+          {/* Enhanced Summary Cards */}
+          <Grid container spacing={isMobile ? 2 : 3} sx={{ mb: 4 }}>
+            <Grid item xs={12} sm={6} md={3}>
               <Card>
                 <CardContent sx={{ textAlign: 'center' }}>
-                  <Typography variant="h6" gutterBottom>Total Orders</Typography>
-                  <Typography variant={isMobile ? "h4" : "h3"} color="primary">{orders.length}</Typography>
+                  <Typography variant="h6" gutterBottom color="primary">Total Orders</Typography>
+                  <Typography variant={isMobile ? "h4" : "h3"} color="primary">
+                    {analyticsLoading ? <CircularProgress size={30} /> : orderSummary.total_orders}
+                  </Typography>
                 </CardContent>
               </Card>
             </Grid>
-            <Grid item xs={12} sm={6}>
+            <Grid item xs={12} sm={6} md={3}>
               <Card>
                 <CardContent sx={{ textAlign: 'center' }}>
-                  <Typography variant="h6" gutterBottom>Total Revenue</Typography>
-                  <Typography variant={isMobile ? "h4" : "h3"} color="primary">
-                    ₹{orders.reduce((sum, order) => sum + order.total_amount, 0).toFixed(2)}
+                  <Typography variant="h6" gutterBottom color="success.main">Total Revenue</Typography>
+                  <Typography variant={isMobile ? "h4" : "h3"} color="success.main">
+                    {analyticsLoading ? <CircularProgress size={30} /> : `₹${orderSummary.total_revenue?.toFixed(2) || '0.00'}`}
+                  </Typography>
+                </CardContent>
+              </Card>
+            </Grid>
+            <Grid item xs={12} sm={6} md={3}>
+              <Card>
+                <CardContent sx={{ textAlign: 'center' }}>
+                  <Typography variant="h6" gutterBottom color="info.main">Avg Order Value</Typography>
+                  <Typography variant={isMobile ? "h4" : "h3"} color="info.main">
+                    {analyticsLoading ? <CircularProgress size={30} /> : `₹${orderSummary.avg_order_value?.toFixed(2) || '0.00'}`}
+                  </Typography>
+                </CardContent>
+              </Card>
+            </Grid>
+            <Grid item xs={12} sm={6} md={3}>
+              <Card>
+                <CardContent sx={{ textAlign: 'center' }}>
+                  <Typography variant="h6" gutterBottom color="warning.main">Items Sold</Typography>
+                  <Typography variant={isMobile ? "h4" : "h3"} color="warning.main">
+                    {analyticsLoading ? <CircularProgress size={30} /> : orderSummary.total_items_sold}
                   </Typography>
                 </CardContent>
               </Card>
             </Grid>
           </Grid>
 
-          <Typography variant="h6" sx={{ mt: 4, mb: 2 }}>Product Sales Analytics</Typography>
-          {isMobile ? (
+          {/* Additional Summary Cards */}
+          <Grid container spacing={isMobile ? 2 : 3} sx={{ mb: 4 }}>
+            <Grid item xs={12} sm={6} md={4}>
+              <Card>
+                <CardContent sx={{ textAlign: 'center' }}>
+                  <Typography variant="h6" gutterBottom>Min Order Value</Typography>
+                  <Typography variant="h5" color="text.secondary">
+                    ₹{orderSummary.min_order_value?.toFixed(2) || '0.00'}
+                  </Typography>
+                </CardContent>
+              </Card>
+            </Grid>
+            <Grid item xs={12} sm={6} md={4}>
+              <Card>
+                <CardContent sx={{ textAlign: 'center' }}>
+                  <Typography variant="h6" gutterBottom>Max Order Value</Typography>
+                  <Typography variant="h5" color="text.secondary">
+                    ₹{orderSummary.max_order_value?.toFixed(2) || '0.00'}
+                  </Typography>
+                </CardContent>
+              </Card>
+            </Grid>
+            <Grid item xs={12} sm={6} md={4}>
+              <Card>
+                <CardContent>
+                  <Typography variant="h6" gutterBottom>Order Status Distribution</Typography>
+                  <Box sx={{ mt: 2 }}>
+                    {orderSummary.status_counts && Object.entries(orderSummary.status_counts).map(([status, count]) => (
+                      <Box key={status} sx={{ display: 'flex', justifyContent: 'space-between', mb: 1 }}>
+                        <Chip 
+                          label={status.charAt(0).toUpperCase() + status.slice(1)} 
+                          color={getStatusColor(status) as any}
+                          size="small"
+                        />
+                        <Typography variant="body2">{String(count)}</Typography>
+                      </Box>
+                    ))}
+                  </Box>
+                </CardContent>
+              </Card>
+            </Grid>
+          </Grid>
+
+          {/* Analytics Data Table/Cards */}
+          <Box sx={{ 
+            display: 'flex', 
+            flexDirection: isMobile ? 'column' : 'row',
+            justifyContent: 'space-between', 
+            alignItems: isMobile ? 'stretch' : 'center',
+            mb: 2,
+            gap: isMobile ? 2 : 0 
+          }}>
+            <Typography variant="h6">
+              {analyticsGroupBy === 'product' && 'Product Sales Analytics'}
+              {analyticsGroupBy === 'week' && 'Weekly Sales Summary'}
+              {analyticsGroupBy === 'month' && 'Monthly Sales Summary'}
+            </Typography>
+            {analytics.length > 0 && (
+              <Typography variant="body2" color="text.secondary">
+                Showing {analytics.length} {analyticsGroupBy === 'product' ? 'products' : `${analyticsGroupBy}s`}
+              </Typography>
+            )}
+          </Box>
+
+          {analyticsLoading ? (
+            <Box sx={{ display: 'flex', justifyContent: 'center', py: 4 }}>
+              <CircularProgress size={40} />
+            </Box>
+          ) : analytics.length === 0 ? (
+            <Alert severity="info" sx={{ mt: 2 }}>
+              No analytics data available for the selected date range and grouping.
+            </Alert>
+          ) : isMobile ? (
             // Mobile Card Layout
             <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-              {analytics.map((item) => (
-                <Card key={item.product_id} elevation={1}>
+              {analytics.map((item, index) => (
+                <Card key={`${item.product_id || 'period'}-${index}`} elevation={1}>
                   <CardContent>
-                    <Typography variant="h6" gutterBottom>{item.product_name}</Typography>
+                    <Typography variant="h6" gutterBottom>
+                      {analyticsGroupBy === 'product' ? item.product_name : 
+                       analyticsGroupBy === 'week' ? `Week ${item.period || index + 1}` :
+                       `Month ${item.period || index + 1}`}
+                    </Typography>
                     <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                       <Box>
                         <Typography variant="body2" color="text.secondary">Quantity Sold</Typography>
@@ -1639,6 +1855,13 @@ const Admin: React.FC = () => {
                         <Typography variant="h6" color="primary">₹{item.total_revenue.toFixed(2)}</Typography>
                       </Box>
                     </Box>
+                    {analyticsGroupBy !== 'product' && item.order_count && (
+                      <Box sx={{ mt: 1, textAlign: 'center' }}>
+                        <Typography variant="body2" color="text.secondary">
+                          {item.order_count} orders
+                        </Typography>
+                      </Box>
+                    )}
                   </CardContent>
                 </Card>
               ))}
@@ -1649,17 +1872,29 @@ const Admin: React.FC = () => {
               <Table>
                 <TableHead>
                   <TableRow>
-                    <TableCell>Product Name</TableCell>
-                    <TableCell>Total Quantity Sold</TableCell>
-                    <TableCell>Total Revenue</TableCell>
+                    <TableCell>
+                      {analyticsGroupBy === 'product' && 'Product Name'}
+                      {analyticsGroupBy === 'week' && 'Week'}
+                      {analyticsGroupBy === 'month' && 'Month'}
+                    </TableCell>
+                    <TableCell align="right">Quantity Sold</TableCell>
+                    <TableCell align="right">Revenue</TableCell>
+                    {analyticsGroupBy !== 'product' && <TableCell align="right">Orders</TableCell>}
                   </TableRow>
                 </TableHead>
                 <TableBody>
-                  {analytics.map((item) => (
-                    <TableRow key={item.product_id}>
-                      <TableCell>{item.product_name}</TableCell>
-                      <TableCell>{item.total_quantity}</TableCell>
-                      <TableCell>₹{item.total_revenue.toFixed(2)}</TableCell>
+                  {analytics.map((item, index) => (
+                    <TableRow key={`${item.product_id || 'period'}-${index}`}>
+                      <TableCell>
+                        {analyticsGroupBy === 'product' ? item.product_name : 
+                         analyticsGroupBy === 'week' ? `Week ${item.period || index + 1}` :
+                         `Month ${item.period || index + 1}`}
+                      </TableCell>
+                      <TableCell align="right">{item.total_quantity}</TableCell>
+                      <TableCell align="right">₹{item.total_revenue.toFixed(2)}</TableCell>
+                      {analyticsGroupBy !== 'product' && (
+                        <TableCell align="right">{item.order_count || 0}</TableCell>
+                      )}
                     </TableRow>
                   ))}
                 </TableBody>
