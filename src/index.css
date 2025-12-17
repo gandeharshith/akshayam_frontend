@@ -314,8 +314,103 @@ p {
   }
 }
 
-/* Dark mode support (future enhancement) */
-@media (prefers-color-scheme: dark) {
+/* Mobile-first text visibility fixes */
+@media (max-width: 768px) {
+  /* Force proper text colors on mobile regardless of system preferences */
+  :root {
+    --text-primary: #1a1a1a !important;
+    --text-secondary: #666666 !important;
+    --background-default: #f8fffe !important;
+    --background-paper: #ffffff !important;
+  }
+  
+  /* Ensure all text elements have proper contrast on mobile */
+  body, p, span, div, h1, h2, h3, h4, h5, h6 {
+    color: #1a1a1a !important;
+    text-shadow: none !important;
+    -webkit-text-stroke: none !important;
+  }
+  
+  /* Material-UI specific overrides for mobile */
+  .MuiTypography-root {
+    color: #1a1a1a !important;
+  }
+  
+  .MuiTypography-body1 {
+    color: #1a1a1a !important;
+  }
+  
+  .MuiTypography-body2 {
+    color: #666666 !important;
+  }
+  
+  .MuiTypography-h1,
+  .MuiTypography-h2,
+  .MuiTypography-h3,
+  .MuiTypography-h4,
+  .MuiTypography-h5,
+  .MuiTypography-h6 {
+    color: #1a1a1a !important;
+  }
+  
+  /* Ensure card content is always visible on mobile */
+  .MuiCardContent-root {
+    background-color: rgba(255,255,255,0.95) !important;
+    color: #1a1a1a !important;
+  }
+  
+  .MuiPaper-root {
+    background-color: #ffffff !important;
+    color: #1a1a1a !important;
+  }
+  
+  /* Fix any transparent or problematic backgrounds on mobile */
+  .MuiContainer-root {
+    background-color: #f8fffe !important;
+  }
+  
+  /* Additional mobile text visibility fixes */
+  .MuiListItemText-primary,
+  .MuiListItemText-secondary {
+    color: #1a1a1a !important;
+  }
+  
+  .MuiButton-root {
+    color: inherit !important;
+  }
+  
+  .MuiIconButton-root {
+    color: inherit !important;
+  }
+  
+  .MuiChip-root {
+    color: inherit !important;
+  }
+  
+  /* Ensure proper text contrast in all scenarios */
+  * {
+    color: inherit !important;
+  }
+  
+  /* Force dark text on light backgrounds */
+  [style*="background: white"], 
+  [style*="background-color: white"],
+  [style*="background: #fff"],
+  [style*="background-color: #fff"],
+  [style*="background: #ffffff"],
+  [style*="background-color: #ffffff"] {
+    color: #1a1a1a !important;
+  }
+  
+  /* Android WebView specific fixes */
+  body * {
+    -webkit-font-smoothing: antialiased !important;
+    -moz-osx-font-smoothing: grayscale !important;
+  }
+}
+
+/* Dark mode support - disabled on mobile to prevent conflicts */
+@media (prefers-color-scheme: dark) and (min-width: 769px) {
   :root {
     --text-primary: #ffffff;
     --text-secondary: #cccccc;
