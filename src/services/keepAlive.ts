@@ -1,12 +1,16 @@
 /**
  * Keep-Alive Service
- * Prevents Render backend from going to sleep by sending periodic requests
+ * Prevents backend from going to sleep by sending periodic requests every 5 minutes
+ * Runs continuously even when the browser tab is not active
  */
 
 class KeepAliveService {
   private intervalId: NodeJS.Timeout | null = null;
   private isActive: boolean = false;
-  private readonly PING_INTERVAL = 60000; // 1 minute in milliseconds
+  private retryCount: number = 0;
+  private readonly PING_INTERVAL = 300000; // 5 minutes in milliseconds (300000ms = 5 min)
+  private readonly MAX_RETRIES = 3;
+  private readonly RETRY_DELAY = 30000; // 30 seconds
   private readonly API_URL = process.env.REACT_APP_API_URL || 'http://localhost:8000';
   private readonly HEALTH_ENDPOINT = `${this.API_URL}/health`;
 
@@ -25,12 +29,12 @@ class KeepAliveService {
     // Send initial ping immediately
     this.ping();
 
-    // Set up recurring pings every minute
+    // Set up recurring pings every 5 minutes
     this.intervalId = setInterval(() => {
       this.ping();
     }, this.PING_INTERVAL);
 
-    console.log(`Keep-alive service started. Pinging every ${this.PING_INTERVAL / 1000} seconds.`);
+    console.log(`Keep-alive service started. Pinging every ${this.PING_INTERVAL / 60000} minutes (${this.PING_INTERVAL / 1000} seconds).`);
   }
 
   /**
@@ -61,36 +65,71 @@ class KeepAliveService {
   }
 
   /**
-   * Send a ping request to the backend health endpoint
+   * Send a ping request to the backend health endpoint with retry logic
    */
   private async ping(): Promise<void> {
+    const timestamp = new Date().toLocaleTimeString();
+    
     try {
       const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 5000); // 5 second timeout
+      const timeoutId = setTimeout(() => controller.abort(), 10000); // 10 second timeout
 
       const response = await fetch(this.HEALTH_ENDPOINT, {
         method: 'GET',
         signal: controller.signal,
         headers: {
           'Content-Type': 'application/json',
+          'Cache-Control': 'no-cache',
         },
       });
 
       clearTimeout(timeoutId);
 
       if (response.ok) {
-        const data = await response.json();
-        console.log(`Keep-alive ping successful: ${data.status} at ${new Date().toLocaleTimeString()}`);
+        const data = await response.json().catch(() => ({ status: 'ok' }));
+        console.log(`✅ Keep-alive ping successful: ${data.status || 'healthy'} at ${timestamp}`);
+        this.retryCount = 0; // Reset retry count on success
       } else {
-        console.warn(`Keep-alive ping failed with status: ${response.status}`);
+        console.warn(`⚠️ Keep-alive ping failed with status: ${response.status} at ${timestamp}`);
+        await this.handlePingFailure();
       }
     } catch (error) {
       if (error instanceof Error && error.name === 'AbortError') {
-        console.warn('Keep-alive ping timed out');
+        console.warn(`⏱️ Keep-alive ping timed out at ${timestamp}`);
       } else {
-        console.warn('Keep-alive ping failed:', error);
+        console.warn(`❌ Keep-alive ping failed at ${timestamp}:`, error);
       }
+      await this.handlePingFailure();
     }
+  }
+
+  /**
+   * Handle ping failures with retry logic
+   */
+  private async handlePingFailure(): Promise<void> {
+    this.retryCount++;
+    
+    if (this.retryCount <= this.MAX_RETRIES) {
+      console.log(`🔄 Retrying keep-alive ping in ${this.RETRY_DELAY / 1000} seconds (attempt ${this.retryCount}/${this.MAX_RETRIES})`);
+      
+      // Wait for retry delay, then retry
+      setTimeout(() => {
+        if (this.isActive) {
+          this.ping();
+        }
+      }, this.RETRY_DELAY);
+    } else {
+      console.error(`💀 Keep-alive ping failed after ${this.MAX_RETRIES} retries. Will continue with regular interval.`);
+      this.retryCount = 0; // Reset for next regular ping
+    }
+  }
+
+  /**
+   * Force a manual ping (useful for testing)
+   */
+  public forcePing(): void {
+    console.log('🚀 Forcing manual keep-alive ping...');
+    this.ping();
   }
 
   /**
