@@ -5,7 +5,6 @@ import {
   Box,
   Grid,
   Card,
-  CardMedia,
   CardContent,
   Button,
   Alert,
@@ -27,7 +26,9 @@ import {
 } from '@mui/icons-material';
 import { useNavigate } from 'react-router-dom';
 import { contentAPI, categoriesAPI } from '../services/api';
+import { cachedApiCall } from '../services/cache';
 import { Content, Category } from '../types';
+import LazyImage from '../components/LazyImage';
 
 const FeatureCard: React.FC<{
   icon: React.ReactNode;
@@ -183,14 +184,13 @@ const CategoryCard: React.FC<{
         onClick={() => onNavigate(category._id)}
       >
         {category.image_url && (
-          <CardMedia
-            component="img"
-            image={`${process.env.REACT_APP_API_URL || 'http://localhost:8000'}${category.image_url}`}
+          <LazyImage
+            src={`${process.env.REACT_APP_API_URL || 'http://localhost:8000'}${category.image_url}`}
             alt={category.name}
+            height={200}
             sx={{
-              height: { xs: 180, md: 220 },
-              objectFit: 'cover',
               transition: 'transform 0.4s ease',
+              height: { xs: 180, md: 220 },
             }}
           />
         )}
@@ -260,33 +260,42 @@ const Home: React.FC = () => {
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const [
-          homeContent,
-          categoriesData,
+        // Fetch critical data first (home content and categories)
+        const [homeContent, categoriesData] = await Promise.all([
+          cachedApiCall('home-content', () => contentAPI.get('home'), 10 * 60 * 1000), // Cache for 10 minutes
+          cachedApiCall('categories', () => categoriesAPI.getAll(), 5 * 60 * 1000) // Cache for 5 minutes
+        ]);
+
+        setContent(homeContent);
+        setCategories(categoriesData);
+
+        // Fetch secondary content in the background (non-blocking)
+        Promise.all([
+          cachedApiCall('delivery-schedule', () => contentAPI.getSection('delivery', 'schedule'), 30 * 60 * 1000).catch(() => null),
+          cachedApiCall('categories-heading', () => contentAPI.getSection('home', 'categories_heading'), 30 * 60 * 1000).catch(() => null),
+          cachedApiCall('features-heading', () => contentAPI.getSection('home', 'features_heading'), 30 * 60 * 1000).catch(() => null),
+          cachedApiCall('feature-1', () => contentAPI.getSection('home', 'feature_1'), 30 * 60 * 1000).catch(() => null),
+          cachedApiCall('feature-2', () => contentAPI.getSection('home', 'feature_2'), 30 * 60 * 1000).catch(() => null),
+          cachedApiCall('feature-3', () => contentAPI.getSection('home', 'feature_3'), 30 * 60 * 1000).catch(() => null)
+        ]).then(([
           deliveryData,
           categoriesHeadingData,
           featuresHeadingData,
           feature1Data,
           feature2Data,
           feature3Data
-        ] = await Promise.all([
-          contentAPI.get('home'),
-          categoriesAPI.getAll(),
-          contentAPI.getSection('delivery', 'schedule'),
-          contentAPI.getSection('home', 'categories_heading').catch(() => null),
-          contentAPI.getSection('home', 'features_heading').catch(() => null),
-          contentAPI.getSection('home', 'feature_1').catch(() => null),
-          contentAPI.getSection('home', 'feature_2').catch(() => null),
-          contentAPI.getSection('home', 'feature_3').catch(() => null)
-        ]);
-        setContent(homeContent);
-        setCategories(categoriesData);
-        setDeliveryContent(deliveryData);
-        setCategoriesHeading(categoriesHeadingData);
-        setFeaturesHeading(featuresHeadingData);
-        setFeature1(feature1Data);
-        setFeature2(feature2Data);
-        setFeature3(feature3Data);
+        ]) => {
+          setDeliveryContent(deliveryData);
+          setCategoriesHeading(categoriesHeadingData);
+          setFeaturesHeading(featuresHeadingData);
+          setFeature1(feature1Data);
+          setFeature2(feature2Data);
+          setFeature3(feature3Data);
+        }).catch(err => {
+          console.warn('Error fetching secondary content:', err);
+          // Don't set error state for secondary content failures
+        });
+
       } catch (err) {
         setError('Failed to load content');
         console.error('Error fetching data:', err);
@@ -396,13 +405,16 @@ const Home: React.FC = () => {
                     border: '1px solid rgba(255,255,255,0.2)',
                   }}
                 >
-                  <img
+                  <LazyImage
                     src={`${process.env.REACT_APP_API_URL || 'http://localhost:8000'}${content.logo_url}`}
                     alt="Akshayam Wellness Logo"
-                    style={{
-                      maxHeight: isMobile ? 80 : 120,
-                      objectFit: 'contain',
-                      filter: 'drop-shadow(0 4px 8px rgba(0,0,0,0.2))'
+                    height={isMobile ? 80 : 120}
+                    width="auto"
+                    sx={{
+                      filter: 'drop-shadow(0 4px 8px rgba(0,0,0,0.2))',
+                      '& img': {
+                        objectFit: 'contain'
+                      }
                     }}
                   />
                 </Box>

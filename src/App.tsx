@@ -1,19 +1,40 @@
-import React from 'react';
+import React, { Suspense, lazy } from 'react';
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import { ThemeProvider, createTheme } from '@mui/material/styles';
-import { CssBaseline, Snackbar, Alert } from '@mui/material';
+import { CssBaseline, Snackbar, Alert, Box, CircularProgress, Typography } from '@mui/material';
 import { CartProvider, useCart } from './contexts/CartContext';
 import './services/keepAlive'; // Import keep-alive service to auto-start it
 import Navbar from './components/Navbar';
 import Footer from './components/Footer';
-import Home from './pages/Home';
-import About from './pages/About';
-import Products from './pages/Products';
-import Recipes from './pages/Recipes';
-import Cart from './pages/Cart';
-import MyOrders from './pages/MyOrders';
-import Admin from './pages/Admin';
-import AdminLogin from './pages/AdminLogin';
+
+// Lazy load pages for code splitting
+const Home = lazy(() => import('./pages/Home'));
+const About = lazy(() => import('./pages/About'));
+const Products = lazy(() => import('./pages/Products'));
+const Recipes = lazy(() => import('./pages/Recipes'));
+const Cart = lazy(() => import('./pages/Cart'));
+const MyOrders = lazy(() => import('./pages/MyOrders'));
+const Admin = lazy(() => import('./pages/Admin'));
+const AdminLogin = lazy(() => import('./pages/AdminLogin'));
+
+// Loading component
+const PageLoader: React.FC = () => (
+  <Box
+    sx={{
+      display: 'flex',
+      flexDirection: 'column',
+      alignItems: 'center',
+      justifyContent: 'center',
+      minHeight: '50vh',
+      gap: 2
+    }}
+  >
+    <CircularProgress size={40} thickness={4} />
+    <Typography variant="body2" color="text.secondary">
+      Loading...
+    </Typography>
+  </Box>
+);
 
 // Notification component
 const CartNotification: React.FC = () => {
@@ -53,16 +74,18 @@ const AppContent: React.FC = () => {
       <div className="App">
         <Navbar />
         <main style={{ minHeight: 'calc(100vh - 140px)' }}>
-          <Routes>
-            <Route path="/" element={<Home />} />
-            <Route path="/about" element={<About />} />
-            <Route path="/products" element={<Products />} />
-            <Route path="/recipes" element={<Recipes />} />
-            <Route path="/cart" element={<Cart />} />
-            <Route path="/my-orders" element={<MyOrders />} />
-            <Route path="/adddmin/login" element={<AdminLogin />} />
-            <Route path="/adddmin/*" element={<Admin />} />
-          </Routes>
+          <Suspense fallback={<PageLoader />}>
+            <Routes>
+              <Route path="/" element={<Home />} />
+              <Route path="/about" element={<About />} />
+              <Route path="/products" element={<Products />} />
+              <Route path="/recipes" element={<Recipes />} />
+              <Route path="/cart" element={<Cart />} />
+              <Route path="/my-orders" element={<MyOrders />} />
+              <Route path="/adddmin/login" element={<AdminLogin />} />
+              <Route path="/adddmin/*" element={<Admin />} />
+            </Routes>
+          </Suspense>
         </main>
         <Footer />
         <CartNotification />
