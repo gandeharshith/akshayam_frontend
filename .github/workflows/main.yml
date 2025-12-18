@@ -21,7 +21,7 @@ jobs:
         echo "📡 Pinging: $BACKEND_URL"
         
         # Ping the backend with timeout and retry
-        for i in {1..3}; do
+        for i in {1..8}; do
           if curl -f -s -m 10 "$BACKEND_URL" > /dev/null 2>&1; then
             echo "✅ Backend ping successful (attempt $i)"
             curl -s "$BACKEND_URL" | head -c 200
