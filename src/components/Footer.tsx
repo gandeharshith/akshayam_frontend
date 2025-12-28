@@ -91,8 +91,8 @@ const Footer: React.FC = () => {
           onClick={scrollToTop}
           sx={{
             position: 'fixed',
-            bottom: { xs: 80, md: 32 },
-            right: { xs: 20, md: 32 },
+            bottom: { xs: 20, md: 32 },
+            right: { xs: 16, md: 32 },
             zIndex: 1000,
             backgroundColor: '#2e7d32',
             color: 'white',
@@ -103,11 +103,11 @@ const Footer: React.FC = () => {
               boxShadow: '0 8px 30px rgba(46, 125, 50, 0.4)',
             },
             transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
-            width: 56,
-            height: 56,
+            width: { xs: 48, md: 56 },
+            height: { xs: 48, md: 56 },
           }}
         >
-          <ArrowUpward />
+          <ArrowUpward sx={{ fontSize: { xs: '1.2rem', md: '1.5rem' } }} />
         </IconButton>
       </Slide>
 
@@ -141,15 +141,15 @@ const Footer: React.FC = () => {
       >
         <Box sx={{ position: 'relative', zIndex: 2 }}>
           {/* Top Section with Brand and Features */}
-          <Box sx={{ py: { xs: 4, md: 6 }, borderBottom: '1px solid rgba(255,255,255,0.1)' }}>
+          <Box sx={{ py: { xs: 2.5, md: 6 }, borderBottom: '1px solid rgba(255,255,255,0.1)' }}>
             <Container maxWidth="xl">
               <Fade in={true} timeout={1000}>
-                <Box sx={{ textAlign: 'center', mb: { xs: 3, md: 4 } }}>
-                  <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', mb: 2 }}>
+                <Box sx={{ textAlign: 'center', mb: { xs: 2, md: 4 } }}>
+                  <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', mb: { xs: 1.5, md: 2 } }}>
                     <LocalFlorist 
                       sx={{ 
-                        mr: 1.5, 
-                        fontSize: 32,
+                        mr: { xs: 1, md: 1.5 }, 
+                        fontSize: { xs: 24, md: 32 },
                         color: 'rgba(255,255,255,0.9)',
                         filter: 'drop-shadow(0 2px 4px rgba(0,0,0,0.2))'
                       }} 
@@ -159,7 +159,7 @@ const Footer: React.FC = () => {
                       sx={{
                         fontWeight: 700,
                         color: 'white',
-                        fontSize: { xs: '1.5rem', md: '2rem' },
+                        fontSize: { xs: '1.25rem', sm: '1.5rem', md: '2rem' },
                         letterSpacing: '-0.02em',
                         textShadow: '0 2px 4px rgba(0,0,0,0.2)',
                       }}
@@ -169,17 +169,18 @@ const Footer: React.FC = () => {
                   </Box>
 
                   {/* Feature Chips */}
-                  <Box sx={{ display: 'flex', gap: 1, justifyContent: 'center', flexWrap: 'wrap', mb: 3 }}>
+                  <Box sx={{ display: 'flex', gap: { xs: 0.5, md: 1 }, justifyContent: 'center', flexWrap: 'wrap', mb: { xs: 2, md: 3 } }}>
                     {features.map((feature, index) => (
                       <Fade in={true} timeout={1200 + index * 200} key={index}>
                         <Chip
                           icon={feature.icon}
                           label={feature.text}
-                          size="small"
+                          size={isMobile ? 'small' : 'medium'}
                           sx={{
                             backgroundColor: 'rgba(255,255,255,0.15)',
                             color: 'white',
                             fontWeight: 600,
+                            fontSize: { xs: '0.75rem', md: '0.875rem' },
                             backdropFilter: 'blur(10px)',
                             border: '1px solid rgba(255,255,255,0.2)',
                             '&:hover': {
@@ -195,11 +196,11 @@ const Footer: React.FC = () => {
                     variant="body1"
                     sx={{
                       color: 'rgba(255,255,255,0.9)',
-                      maxWidth: 600,
+                      maxWidth: { xs: '100%', md: 600 },
                       mx: 'auto',
-                      fontSize: { xs: '0.9rem', md: '1rem' },
+                      fontSize: { xs: '0.85rem', md: '1rem' },
                       lineHeight: 1.6,
-                      px: 2,
+                      px: { xs: 1, md: 2 },
                     }}
                   >
                     {contactInfo?.company_description || 'Your trusted partner in organic wellness products. We provide high-quality, natural products to enhance your healthy lifestyle.'}
@@ -210,9 +211,9 @@ const Footer: React.FC = () => {
           </Box>
 
           {/* Main Footer Content */}
-          <Box sx={{ py: { xs: 4, md: 6 } }}>
+          <Box sx={{ py: { xs: 2.5, md: 6 } }}>
             <Container maxWidth="xl">
-              <Grid container spacing={{ xs: 3, md: 5 }}>
+              <Grid container spacing={{ xs: 2.5, md: 5 }}>
                 {/* Quick Links */}
                 <Grid item xs={12} sm={6} md={3}>
                   <Fade in={true} timeout={800}>
@@ -223,15 +224,15 @@ const Footer: React.FC = () => {
                         sx={{
                           color: 'white',
                           fontWeight: 700,
-                          fontSize: { xs: '1.1rem', md: '1.25rem' },
-                          mb: 2.5,
+                          fontSize: { xs: '1rem', md: '1.25rem' },
+                          mb: { xs: 1.5, md: 2.5 },
                           position: 'relative',
                           '&::after': {
                             content: '""',
                             position: 'absolute',
-                            bottom: -8,
+                            bottom: { xs: -4, md: -8 },
                             left: 0,
-                            width: 40,
+                            width: { xs: 30, md: 40 },
                             height: 2,
                             backgroundColor: '#66bb6a',
                             borderRadius: 1,
@@ -240,7 +241,7 @@ const Footer: React.FC = () => {
                       >
                         Quick Links
                       </Typography>
-                      <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5 }}>
+                      <Box sx={{ display: 'flex', flexDirection: 'column', gap: { xs: 1, md: 1.5 } }}>
                         {quickLinks.map((link, index) => (
                           <Fade in={true} timeout={1000 + index * 100} key={link.path}>
                             <Link 
@@ -251,21 +252,21 @@ const Footer: React.FC = () => {
                                 textDecoration: 'none',
                                 display: 'flex',
                                 alignItems: 'center',
-                                gap: 1,
-                                py: 0.5,
-                                px: 1,
+                                gap: { xs: 0.75, md: 1 },
+                                py: { xs: 0.4, md: 0.5 },
+                                px: { xs: 0.75, md: 1 },
                                 borderRadius: 2,
-                                fontSize: '0.95rem',
+                                fontSize: { xs: '0.85rem', md: '0.95rem' },
                                 transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
                                 '&:hover': {
                                   color: 'white',
                                   backgroundColor: 'rgba(255,255,255,0.1)',
-                                  transform: 'translateX(8px)',
+                                  transform: { xs: 'translateX(4px)', md: 'translateX(8px)' },
                                   backdropFilter: 'blur(10px)',
                                 }
                               }}
                             >
-                              <span style={{ fontSize: '1.1rem' }}>{link.icon}</span>
+                              <span style={{ fontSize: isMobile ? '1rem' : '1.1rem' }}>{link.icon}</span>
                               {link.text}
                             </Link>
                           </Fade>
@@ -285,15 +286,15 @@ const Footer: React.FC = () => {
                         sx={{
                           color: 'white',
                           fontWeight: 700,
-                          fontSize: { xs: '1.1rem', md: '1.25rem' },
-                          mb: 2.5,
+                          fontSize: { xs: '1rem', md: '1.25rem' },
+                          mb: { xs: 1.5, md: 2.5 },
                           position: 'relative',
                           '&::after': {
                             content: '""',
                             position: 'absolute',
-                            bottom: -8,
+                            bottom: { xs: -4, md: -8 },
                             left: 0,
-                            width: 40,
+                            width: { xs: 30, md: 40 },
                             height: 2,
                             backgroundColor: '#66bb6a',
                             borderRadius: 1,
@@ -302,7 +303,7 @@ const Footer: React.FC = () => {
                       >
                         Get In Touch
                       </Typography>
-                      <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+                      <Box sx={{ display: 'flex', flexDirection: 'column', gap: { xs: 1.5, md: 2 } }}>
                         {[
                           { 
                             icon: <Email />, 
@@ -327,40 +328,42 @@ const Footer: React.FC = () => {
                               sx={{
                                 display: 'flex',
                                 alignItems: 'flex-start',
-                                gap: 1.5,
+                                gap: { xs: 1, md: 1.5 },
                                 color: 'rgba(255,255,255,0.8)',
                                 textDecoration: 'none',
-                                p: 1,
+                                p: { xs: 0.75, md: 1 },
                                 borderRadius: 2,
                                 transition: 'all 0.3s ease',
                                 '&:hover': contact.href ? {
                                   color: 'white',
                                   backgroundColor: 'rgba(255,255,255,0.1)',
                                   backdropFilter: 'blur(10px)',
-                                  transform: 'translateY(-2px)',
+                                  transform: { xs: 'translateY(-1px)', md: 'translateY(-2px)' },
                                 } : {}
                               }}
                             >
                               <Box
                                 sx={{
-                                  p: 1,
+                                  p: { xs: 0.75, md: 1 },
                                   borderRadius: '50%',
                                   backgroundColor: 'rgba(255,255,255,0.15)',
                                   display: 'flex',
                                   alignItems: 'center',
                                   justifyContent: 'center',
-                                  minWidth: 40,
-                                  height: 40,
+                                  minWidth: { xs: 32, md: 40 },
+                                  height: { xs: 32, md: 40 },
                                 }}
                               >
-                                {contact.icon}
+                                <Box sx={{ fontSize: { xs: '1rem', md: '1.25rem' } }}>
+                                  {contact.icon}
+                                </Box>
                               </Box>
                               <Typography 
                                 variant="body2" 
                                 sx={{ 
-                                  fontSize: '0.9rem',
+                                  fontSize: { xs: '0.8rem', md: '0.9rem' },
                                   lineHeight: 1.5,
-                                  mt: 0.5
+                                  mt: { xs: 0.25, md: 0.5 }
                                 }}
                               >
                                 {contact.text}
@@ -383,15 +386,15 @@ const Footer: React.FC = () => {
                         sx={{
                           color: 'white',
                           fontWeight: 700,
-                          fontSize: { xs: '1.1rem', md: '1.25rem' },
-                          mb: 2.5,
+                          fontSize: { xs: '1rem', md: '1.25rem' },
+                          mb: { xs: 1.5, md: 2.5 },
                           position: 'relative',
                           '&::after': {
                             content: '""',
                             position: 'absolute',
-                            bottom: -8,
+                            bottom: { xs: -4, md: -8 },
                             left: 0,
-                            width: 40,
+                            width: { xs: 30, md: 40 },
                             height: 2,
                             backgroundColor: '#66bb6a',
                             borderRadius: 1,
@@ -402,18 +405,18 @@ const Footer: React.FC = () => {
                       </Typography>
 
                       {/* Social Media Links */}
-                      <Box sx={{ mb: 3 }}>
+                      <Box sx={{ mb: { xs: 2, md: 3 } }}>
                         <Typography 
                           variant="body2" 
                           sx={{ 
                             color: 'rgba(255,255,255,0.8)', 
-                            mb: 2,
-                            fontSize: '0.9rem'
+                            mb: { xs: 1.5, md: 2 },
+                            fontSize: { xs: '0.8rem', md: '0.9rem' }
                           }}
                         >
                           Stay connected for the latest updates and wellness tips
                         </Typography>
-                        <Box sx={{ display: 'flex', gap: 2, flexWrap: 'wrap' }}>
+                        <Box sx={{ display: 'flex', gap: { xs: 1.5, md: 2 }, flexWrap: 'wrap' }}>
                           {socialLinks.map((social, index) => (
                             <Fade in={true} timeout={1400 + index * 100} key={social.label}>
                               <IconButton
@@ -427,15 +430,19 @@ const Footer: React.FC = () => {
                                   backgroundColor: 'rgba(255,255,255,0.1)',
                                   backdropFilter: 'blur(10px)',
                                   border: '1px solid rgba(255,255,255,0.2)',
+                                  width: { xs: 44, md: 48 },
+                                  height: { xs: 44, md: 48 },
                                   transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
                                   '&:hover': {
                                     backgroundColor: social.color,
-                                    transform: 'translateY(-3px) scale(1.05)',
-                                    boxShadow: `0 8px 25px ${social.color}40`,
+                                    transform: { xs: 'translateY(-2px) scale(1.03)', md: 'translateY(-3px) scale(1.05)' },
+                                    boxShadow: `0 ${isMobile ? '6px' : '8px'} 25px ${social.color}40`,
                                   }
                                 }}
                               >
-                                {social.icon}
+                                <Box sx={{ fontSize: { xs: '1.2rem', md: '1.5rem' } }}>
+                                  {social.icon}
+                                </Box>
                               </IconButton>
                             </Fade>
                           ))}
@@ -446,21 +453,21 @@ const Footer: React.FC = () => {
                       <Paper
                         elevation={0}
                         sx={{
-                          p: 3,
+                          p: { xs: 2, md: 3 },
                           backgroundColor: 'rgba(255,255,255,0.1)',
                           backdropFilter: 'blur(10px)',
                           border: '1px solid rgba(255,255,255,0.2)',
-                          borderRadius: 3,
+                          borderRadius: { xs: 2, md: 3 },
                           color: 'white',
                         }}
                       >
-                        <Box sx={{ display: 'flex', alignItems: 'center', mb: 1.5 }}>
-                          <Schedule sx={{ mr: 1, color: '#66bb6a' }} />
-                          <Typography variant="subtitle1" sx={{ fontWeight: 600 }}>
+                        <Box sx={{ display: 'flex', alignItems: 'center', mb: { xs: 1, md: 1.5 } }}>
+                          <Schedule sx={{ mr: 1, color: '#66bb6a', fontSize: { xs: '1.2rem', md: '1.5rem' } }} />
+                          <Typography variant="subtitle1" sx={{ fontWeight: 600, fontSize: { xs: '0.9rem', md: '1rem' } }}>
                             Delivery Schedule
                           </Typography>
                         </Box>
-                        <Typography variant="body2" sx={{ fontSize: '0.85rem', lineHeight: 1.5, opacity: 0.9 }}>
+                        <Typography variant="body2" sx={{ fontSize: { xs: '0.75rem', md: '0.85rem' }, lineHeight: 1.5, opacity: 0.9 }}>
                           Orders should be placed before every Wednesday 6 PM and the shipment will be delivered on Sunday
                         </Typography>
                       </Paper>
@@ -472,7 +479,7 @@ const Footer: React.FC = () => {
           </Box>
 
           {/* Bottom Footer */}
-          <Box sx={{ borderTop: '1px solid rgba(255,255,255,0.1)', py: 3 }}>
+          <Box sx={{ borderTop: '1px solid rgba(255,255,255,0.1)', py: { xs: 2, md: 3 } }}>
             <Container maxWidth="xl">
               <Fade in={true} timeout={1600}>
                 <Box sx={{ 
@@ -480,7 +487,7 @@ const Footer: React.FC = () => {
                   flexDirection: { xs: 'column', md: 'row' },
                   justifyContent: 'space-between',
                   alignItems: 'center',
-                  gap: 2,
+                  gap: { xs: 1.5, md: 2 },
                   textAlign: { xs: 'center', md: 'left' }
                 }}>
                   <Typography 
@@ -489,11 +496,13 @@ const Footer: React.FC = () => {
                       color: 'rgba(255,255,255,0.7)',
                       display: 'flex',
                       alignItems: 'center',
+                      justifyContent: { xs: 'center', md: 'flex-start' },
                       gap: 0.5,
-                      fontSize: '0.85rem'
+                      fontSize: { xs: '0.75rem', md: '0.85rem' },
+                      flexWrap: 'wrap'
                     }}
                   >
-                    <Copyright sx={{ fontSize: '1rem' }} />
+                    <Copyright sx={{ fontSize: { xs: '0.9rem', md: '1rem' } }} />
                     {new Date().getFullYear()} {contactInfo?.company_name || 'Akshayam Wellness'}. All rights reserved.
                   </Typography>
                   
@@ -503,11 +512,12 @@ const Footer: React.FC = () => {
                       color: 'rgba(255,255,255,0.6)',
                       display: 'flex',
                       alignItems: 'center',
+                      justifyContent: { xs: 'center', md: 'flex-start' },
                       gap: 0.5,
-                      fontSize: '0.8rem'
+                      fontSize: { xs: '0.7rem', md: '0.8rem' }
                     }}
                   >
-                    Made with <Favorite sx={{ color: '#ff4444', fontSize: '1rem' }} /> for your wellness
+                    Made with <Favorite sx={{ color: '#ff4444', fontSize: { xs: '0.9rem', md: '1rem' } }} /> for your wellness
                   </Typography>
                 </Box>
               </Fade>
