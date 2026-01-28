@@ -458,7 +458,7 @@ const Products: React.FC = () => {
                     fontSize: { xs: '0.9rem', md: '0.875rem' },
                     lineHeight: 1.5,
                     display: '-webkit-box',
-                    WebkitLineClamp: 2,
+                    WebkitLineClamp: 9,
                     WebkitBoxOrient: 'vertical',
                     overflow: 'hidden',
                     minHeight: { xs: '2.7rem', md: 'auto' }
