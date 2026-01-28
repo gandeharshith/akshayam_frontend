@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   Container,
   Box,
@@ -587,18 +587,7 @@ const Admin: React.FC = () => {
     }
   };
 
-  useEffect(() => {
-    const checkAuth = async () => {
-      if (!authAPI.isAuthenticated()) {
-        navigate('/adddmin/login');
-        return;
-      }
-      await fetchData();
-    };
-    checkAuth();
-  }, [navigate]); // fetchData is defined inside the component and changes on every render, but it's called inside checkAuth
-
-  const fetchData = async () => {
+  const fetchData = useCallback(async () => {
     setLoading(true);
     try {
       const [categoriesData, productsData, recipesData, ordersData, analyticsData, homeData, aboutData, deliveryData] = await Promise.all([
@@ -613,7 +602,6 @@ const Admin: React.FC = () => {
       ]);
       
       console.log('Fetched about data:', aboutData);
-      console.log('Previous about content:', aboutContent);
       
       setCategories(categoriesData);
       setProducts(productsData);
@@ -634,7 +622,18 @@ const Admin: React.FC = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
+
+  useEffect(() => {
+    const checkAuth = async () => {
+      if (!authAPI.isAuthenticated()) {
+        navigate('/adddmin/login');
+        return;
+      }
+      await fetchData();
+    };
+    checkAuth();
+  }, [navigate, fetchData]);
 
   const fetchSystemSettings = async () => {
     try {
@@ -649,7 +648,7 @@ const Admin: React.FC = () => {
   };
 
   // Enhanced Analytics data fetching
-  const fetchAnalyticsData = async () => {
+  const fetchAnalyticsData = useCallback(async () => {
     setAnalyticsLoading(true);
     try {
       // Fetch analytics with date filtering and grouping
@@ -667,7 +666,7 @@ const Admin: React.FC = () => {
     } finally {
       setAnalyticsLoading(false);
     }
-  };
+  }, [analyticsStartDate, analyticsEndDate, analyticsGroupBy]);
 
   // Initialize analytics on component mount
   useEffect(() => {

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import {
   AppBar,
   Toolbar,
@@ -37,7 +37,7 @@ import {
 } from '@mui/icons-material';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { useCart } from '../contexts/CartContext';
-import { stockAPI, systemSettingsAPI } from '../services/api';
+import { stockAPI } from '../services/api';
 import { StockValidationItem } from '../types';
 
 const Navbar: React.FC = () => {
