@@ -4,7 +4,6 @@ import {
   Typography,
   Grid,
   Card,
-  CardMedia,
   CardContent,
   CardActions,
   Button,
@@ -16,8 +15,7 @@ import {
   DialogTitle,
   DialogContent,
   DialogActions,
-  IconButton,
-  Divider
+  IconButton
 } from '@mui/material';
 import {
   MenuBook as RecipeIcon,

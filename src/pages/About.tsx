@@ -5,8 +5,7 @@ import {
   Box,
   Paper,
   CircularProgress,
-  Alert,
-  Grid
+  Alert
 } from '@mui/material';
 import { contentAPI } from '../services/api';
 import { Content } from '../types';

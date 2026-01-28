@@ -83,8 +83,7 @@ import {
   ProductCreate,
   RecipeCreate,
   OrderAnalytics,
-  OrderEditRequest,
-  OrderItem
+  OrderEditRequest
 } from '../types';
 
 interface TabPanelProps {
@@ -597,7 +596,7 @@ const Admin: React.FC = () => {
       await fetchData();
     };
     checkAuth();
-  }, [navigate]);
+  }, [navigate]); // fetchData is defined inside the component and changes on every render, but it's called inside checkAuth
 
   const fetchData = async () => {
     setLoading(true);
@@ -675,7 +674,7 @@ const Admin: React.FC = () => {
     if (orders.length > 0) {
       fetchAnalyticsData();
     }
-  }, [orders]);
+  }, [orders, fetchAnalyticsData]);
 
   // System Settings management
   const handleSystemSettingsSubmit = async () => {

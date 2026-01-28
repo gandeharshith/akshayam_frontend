@@ -9,7 +9,6 @@ import {
   Button,
   List,
   ListItem,
-  ListItemText,
   Divider,
   TextField,
   Dialog,
@@ -31,8 +30,8 @@ import {
 } from '@mui/icons-material';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { useCart } from '../contexts/CartContext';
-import { ordersAPI, stockAPI, contentAPI, systemSettingsAPI } from '../services/api';
-import { User, OrderItem, StockValidationItem, OrderCreateError } from '../types';
+import { ordersAPI, stockAPI, contentAPI } from '../services/api';
+import { User, OrderItem, StockValidationItem } from '../types';
 
 const Cart: React.FC = () => {
   const theme = useTheme();
@@ -79,33 +78,6 @@ const Cart: React.FC = () => {
     fetchData();
   }, []);
 
-  const validateStock = async () => {
-    if (items.length === 0) return true;
-
-    try {
-      const stockValidationItems: StockValidationItem[] = items.map(item => ({
-        product_id: item.product._id,
-        quantity: item.quantity
-      }));
-
-      const validationResult = await stockAPI.validateStock({
-        items: stockValidationItems
-      });
-
-      if (!validationResult.valid) {
-        const errorMessages = validationResult.invalid_items.map(item => item.error);
-        setStockValidationErrors(errorMessages);
-        return false;
-      }
-
-      setStockValidationErrors([]);
-      return true;
-    } catch (err) {
-      console.error('Error validating stock:', err);
-      setStockValidationErrors(['Unable to validate stock availability. Please try again.']);
-      return false;
-    }
-  };
 
   const handleCheckout = async () => {
     if (items.length === 0) return;
