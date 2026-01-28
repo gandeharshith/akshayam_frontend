@@ -1,15 +1,24 @@
 {
   "short_name": "Akshayam Wellness",
-  "name": "Akshayam Wellness - Organic Products",
+  "name": "Akshayam Wellness - Organic Health & Wellness Products",
   "icons": [
     {
       "src": "favicon.ico",
       "sizes": "64x64 32x32 24x24 16x16",
       "type": "image/x-icon"
+    },
+    {
+      "src": "favicon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
     }
   ],
   "start_url": ".",
   "display": "standalone",
   "theme_color": "#4caf50",
-  "background_color": "#ffffff"
+  "background_color": "#ffffff",
+  "description": "Your trusted partner in organic wellness products. Discover natural health solutions, organic supplements, and wellness products for a healthier lifestyle.",
+  "categories": ["health", "lifestyle", "shopping"],
+  "lang": "en"
 }
