@@ -633,7 +633,7 @@ const Admin: React.FC = () => {
       await fetchData();
     };
     checkAuth();
-  }, [navigate, fetchData]);
+  }, [navigate, fetchData]); // fetchData is wrapped in useCallback, so it's stable
 
   const fetchSystemSettings = async () => {
     try {
