@@ -32,7 +32,8 @@ import {
   Alert,
   CircularProgress,
   useTheme,
-  useMediaQuery
+  useMediaQuery,
+  InputAdornment
 } from '@mui/material';
 import {
   Logout,
@@ -41,7 +42,8 @@ import {
   Delete,
   PhotoCamera,
   Visibility,
-  DragIndicator
+  DragIndicator,
+  Search
 } from '@mui/icons-material';
 import {
   DndContext,
@@ -249,11 +251,14 @@ interface SortableProductProps {
   onEdit: (product: Product) => void;
   onDelete: (id: string) => void;
   onImageUpload: (id: string, file: File) => void;
+  onToggleBestSeller: (id: string, currentStatus: boolean) => void;
+  onToggleNewlyLaunched: (id: string, currentStatus: boolean) => void;
+  onToggleThisWeeksFresh: (id: string, currentStatus: boolean) => void;
   isMobile: boolean;
 }
 
 const SortableProduct: React.FC<SortableProductProps> = ({ 
-  product, categories, onEdit, onDelete, onImageUpload, isMobile 
+  product, categories, onEdit, onDelete, onImageUpload, onToggleBestSeller, onToggleNewlyLaunched, onToggleThisWeeksFresh, isMobile 
 }) => {
   const {
     attributes,
@@ -299,6 +304,29 @@ const SortableProduct: React.FC<SortableProductProps> = ({
                   ? `${product.description.substring(0, 100)}...` 
                   : product.description}
               </Typography>
+              <Box sx={{ mt: 2, display: 'flex', flexWrap: 'wrap', gap: 1, alignItems: 'center' }}>
+                <Chip
+                  label={product.best_seller ? "Best Seller ★" : "Mark as Best Seller"}
+                  color={product.best_seller ? "warning" : "default"}
+                  size="small"
+                  onClick={() => onToggleBestSeller(product._id, product.best_seller || false)}
+                  sx={{ cursor: 'pointer' }}
+                />
+                <Chip
+                  label={product.newly_launched ? "🎉 Newly Launched" : "Mark Newly Launched"}
+                  color={product.newly_launched ? "error" : "default"}
+                  size="small"
+                  onClick={() => onToggleNewlyLaunched(product._id, product.newly_launched || false)}
+                  sx={{ cursor: 'pointer' }}
+                />
+                <Chip
+                  label={product.this_weeks_fresh ? "🌱 Week's Fresh" : "Mark Week's Fresh"}
+                  color={product.this_weeks_fresh ? "success" : "default"}
+                  size="small"
+                  onClick={() => onToggleThisWeeksFresh(product._id, product.this_weeks_fresh || false)}
+                  sx={{ cursor: 'pointer' }}
+                />
+              </Box>
             </Box>
             {product.image_url && (
               <img
@@ -360,6 +388,31 @@ const SortableProduct: React.FC<SortableProductProps> = ({
         />
       </TableCell>
       <TableCell>
+        <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.5 }}>
+          <Chip
+            label={product.best_seller ? "Best Seller ★" : "Mark as Best Seller"}
+            color={product.best_seller ? "warning" : "default"}
+            size="small"
+            onClick={() => onToggleBestSeller(product._id, product.best_seller || false)}
+            sx={{ cursor: 'pointer' }}
+          />
+          <Chip
+            label={product.newly_launched ? "🎉 Newly Launched" : "Mark Newly Launched"}
+            color={product.newly_launched ? "error" : "default"}
+            size="small"
+            onClick={() => onToggleNewlyLaunched(product._id, product.newly_launched || false)}
+            sx={{ cursor: 'pointer' }}
+          />
+          <Chip
+            label={product.this_weeks_fresh ? "🌱 Week's Fresh" : "Mark Week's Fresh"}
+            color={product.this_weeks_fresh ? "success" : "default"}
+            size="small"
+            onClick={() => onToggleThisWeeksFresh(product._id, product.this_weeks_fresh || false)}
+            sx={{ cursor: 'pointer' }}
+          />
+        </Box>
+      </TableCell>
+      <TableCell>
         {product.image_url ? (
           <img
             src={`${process.env.REACT_APP_API_URL || 'http://localhost:8000'}${product.image_url}`}
@@ -404,6 +457,7 @@ const Admin: React.FC = () => {
   const [currentTab, setCurrentTab] = useState(0);
   const [categories, setCategories] = useState<Category[]>([]);
   const [products, setProducts] = useState<Product[]>([]);
+  const [productSearchTerm, setProductSearchTerm] = useState<string>('');
   const [recipes, setRecipes] = useState<Recipe[]>([]);
   const [orders, setOrders] = useState<Order[]>([]);
   const [analytics, setAnalytics] = useState<OrderAnalytics[]>([]);
@@ -767,6 +821,48 @@ const Admin: React.FC = () => {
       fetchData();
     } catch (err) {
       console.error(err);
+    }
+  };
+
+  const handleToggleBestSeller = async (productId: string, currentStatus: boolean) => {
+    try {
+      await productsAPI.toggleBestSeller(productId, !currentStatus);
+      // Update local state immediately for better UX
+      setProducts(products.map(p => 
+        p._id === productId ? { ...p, best_seller: !currentStatus } : p
+      ));
+    } catch (err) {
+      console.error('Failed to toggle best seller status:', err);
+      setError('Failed to update best seller status');
+      setTimeout(() => setError(''), 3000);
+    }
+  };
+
+  const handleToggleNewlyLaunched = async (productId: string, currentStatus: boolean) => {
+    try {
+      await productsAPI.toggleNewlyLaunched(productId, !currentStatus);
+      // When setting to true, unset other product's newly_launched status
+      setProducts(products.map(p => 
+        p._id === productId ? { ...p, newly_launched: !currentStatus } : { ...p, newly_launched: false }
+      ));
+    } catch (err) {
+      console.error('Failed to toggle newly launched status:', err);
+      setError('Failed to update newly launched status');
+      setTimeout(() => setError(''), 3000);
+    }
+  };
+
+  const handleToggleThisWeeksFresh = async (productId: string, currentStatus: boolean) => {
+    try {
+      await productsAPI.toggleThisWeeksFresh(productId, !currentStatus);
+      // When setting to true, unset other product's this_weeks_fresh status
+      setProducts(products.map(p => 
+        p._id === productId ? { ...p, this_weeks_fresh: !currentStatus } : { ...p, this_weeks_fresh: false }
+      ));
+    } catch (err) {
+      console.error('Failed to toggle this week\'s fresh status:', err);
+      setError('Failed to update this week\'s fresh status');
+      setTimeout(() => setError(''), 3000);
     }
   };
 
@@ -1245,6 +1341,24 @@ const Admin: React.FC = () => {
             </Button>
           </Box>
 
+          {/* Search Bar for Products */}
+          <Box sx={{ mb: 2 }}>
+            <TextField
+              fullWidth
+              placeholder="Search products by name or description..."
+              value={productSearchTerm}
+              onChange={(e) => setProductSearchTerm(e.target.value)}
+              InputProps={{
+                startAdornment: (
+                  <InputAdornment position="start">
+                    <Search color="action" />
+                  </InputAdornment>
+                )
+              }}
+              size="small"
+            />
+          </Box>
+
           <DndContext
             sensors={sensors}
             collisionDetection={closestCenter}
@@ -1257,7 +1371,12 @@ const Admin: React.FC = () => {
               {isMobile ? (
                 // Mobile Card Layout with Drag & Drop
                 <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-                  {products.map((product) => (
+                  {products.filter(p => {
+                    if (!productSearchTerm) return true;
+                    const searchLower = productSearchTerm.toLowerCase();
+                    return p.name.toLowerCase().includes(searchLower) || 
+                           p.description.toLowerCase().includes(searchLower);
+                  }).map((product) => (
                     <SortableProduct
                       key={product._id}
                       product={product}
@@ -1265,6 +1384,9 @@ const Admin: React.FC = () => {
                       onEdit={editProduct}
                       onDelete={handleProductDelete}
                       onImageUpload={handleProductImageUpload}
+                      onToggleBestSeller={handleToggleBestSeller}
+                      onToggleNewlyLaunched={handleToggleNewlyLaunched}
+                      onToggleThisWeeksFresh={handleToggleThisWeeksFresh}
                       isMobile={isMobile}
                     />
                   ))}
@@ -1279,12 +1401,18 @@ const Admin: React.FC = () => {
                         <TableCell>Category</TableCell>
                         <TableCell>Price</TableCell>
                         <TableCell>Quantity</TableCell>
+                        <TableCell>Best Seller</TableCell>
                         <TableCell>Image</TableCell>
                         <TableCell>Actions</TableCell>
                       </TableRow>
                     </TableHead>
                     <TableBody>
-                      {products.map((product) => (
+                      {products.filter(p => {
+                        if (!productSearchTerm) return true;
+                        const searchLower = productSearchTerm.toLowerCase();
+                        return p.name.toLowerCase().includes(searchLower) || 
+                               p.description.toLowerCase().includes(searchLower);
+                      }).map((product) => (
                         <SortableProduct
                           key={product._id}
                           product={product}
@@ -1292,6 +1420,9 @@ const Admin: React.FC = () => {
                           onEdit={editProduct}
                           onDelete={handleProductDelete}
                           onImageUpload={handleProductImageUpload}
+                          onToggleBestSeller={handleToggleBestSeller}
+                          onToggleNewlyLaunched={handleToggleNewlyLaunched}
+                          onToggleThisWeeksFresh={handleToggleThisWeeksFresh}
                           isMobile={isMobile}
                         />
                       ))}

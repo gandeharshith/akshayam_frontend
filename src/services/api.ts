@@ -97,8 +97,13 @@ export const categoriesAPI = {
 
 // Products API
 export const productsAPI = {
-  getAll: async (categoryId?: string): Promise<Product[]> => {
-    const url = categoryId ? `/products?category_id=${categoryId}` : '/products';
+  getAll: async (categoryId?: string, search?: string): Promise<Product[]> => {
+    const params = new URLSearchParams();
+    if (categoryId) params.append('category_id', categoryId);
+    if (search) params.append('search', search);
+    
+    const queryString = params.toString();
+    const url = queryString ? `/products?${queryString}` : '/products';
     const response = await api.get(url);
     // Sort by order field, then by creation date
     return response.data.sort((a: Product, b: Product) => 
@@ -123,6 +128,26 @@ export const productsAPI = {
   
   update: async (id: string, product: Partial<ProductCreate>): Promise<Product> => {
     const response = await api.put(`/admin/products/${id}`, product);
+    return response.data;
+  },
+  
+  toggleBestSeller: async (id: string, bestSeller: boolean): Promise<Product> => {
+    const response = await api.patch(`/admin/products/${id}/best-seller?best_seller=${bestSeller}`);
+    return response.data;
+  },
+  
+  toggleNewlyLaunched: async (id: string, newlyLaunched: boolean): Promise<Product> => {
+    const response = await api.patch(`/admin/products/${id}/newly-launched?newly_launched=${newlyLaunched}`);
+    return response.data;
+  },
+  
+  toggleThisWeeksFresh: async (id: string, thisWeeksFresh: boolean): Promise<Product> => {
+    const response = await api.patch(`/admin/products/${id}/this-weeks-fresh?this_weeks_fresh=${thisWeeksFresh}`);
+    return response.data;
+  },
+  
+  getFeatured: async (): Promise<{ newly_launched: Product | null; this_weeks_fresh: Product | null }> => {
+    const response = await api.get('/products/featured');
     return response.data;
   },
   

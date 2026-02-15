@@ -25,10 +25,104 @@ import {
   CheckCircleOutline
 } from '@mui/icons-material';
 import { useNavigate } from 'react-router-dom';
-import { contentAPI, categoriesAPI } from '../services/api';
+import { contentAPI, categoriesAPI, productsAPI } from '../services/api';
 import { cachedApiCall } from '../services/cache';
-import { Content, Category } from '../types';
+import { Content, Category, Product } from '../types';
 import LazyImage from '../components/LazyImage';
+
+const FeaturedProductsBanner: React.FC<{
+  newlyLaunched: Product | null;
+  thisWeeksFresh: Product | null;
+  onNavigate: (categoryId: string) => void;
+}> = ({ newlyLaunched, thisWeeksFresh, onNavigate }) => {
+  const [currentIndex, setCurrentIndex] = useState(0);
+  const products = [newlyLaunched, thisWeeksFresh].filter(Boolean) as Product[];
+
+  useEffect(() => {
+    if (products.length <= 1) return;
+
+    const interval = setInterval(() => {
+      setCurrentIndex((prev) => (prev + 1) % products.length);
+    }, 1000);
+
+    return () => clearInterval(interval);
+  }, [products.length]);
+
+  if (products.length === 0) return null;
+
+  const currentProduct = products[currentIndex];
+  const isNewlyLaunched = currentProduct === newlyLaunched;
+
+  return (
+    <Box
+      sx={{
+        mb: { xs: 4, md: 6 },
+        cursor: 'pointer',
+        transition: 'all 0.5s ease',
+      }}
+      onClick={() => onNavigate(currentProduct.category_id)}
+    >
+      <Paper
+        elevation={3}
+        sx={{
+          background: isNewlyLaunched
+            ? 'linear-gradient(135deg, #ffb88c 0%, #ffc891 100%)'
+            : 'linear-gradient(135deg, #81c784 0%, #a5d6a7 100%)',
+          color: '#333',
+          p: { xs: 2, md: 3 },
+          borderRadius: 3,
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          gap: 2,
+          transition: 'all 0.5s ease',
+          '&:hover': {
+            transform: 'translateY(-4px)',
+            boxShadow: '0 8px 24px rgba(0,0,0,0.2)',
+          },
+        }}
+      >
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, flex: 1 }}>
+          <Box
+            sx={{
+              fontSize: { xs: '2rem', md: '3rem' },
+              animation: 'bounce 2s infinite',
+              '@keyframes bounce': {
+                '0%, 100%': { transform: 'translateY(0)' },
+                '50%': { transform: 'translateY(-10px)' },
+              },
+            }}
+          >
+            {isNewlyLaunched ? '🎉' : '🌱'}
+          </Box>
+          <Box sx={{ flex: 1 }}>
+            <Typography
+              variant="h6"
+              sx={{
+                fontWeight: 700,
+                fontSize: { xs: '1rem', md: '1.3rem' },
+                mb: 0.5,
+              }}
+            >
+              {isNewlyLaunched ? 'NEWLY LAUNCHED!' : "THIS WEEK'S FRESH!"}
+            </Typography>
+            <Typography
+              variant="body1"
+              sx={{
+                fontWeight: 600,
+                fontSize: { xs: '0.9rem', md: '1.1rem' },
+                opacity: 0.95,
+              }}
+            >
+              {currentProduct.name} - ₹{currentProduct.price}
+            </Typography>
+          </Box>
+        </Box>
+        <ArrowForward sx={{ fontSize: { xs: '1.5rem', md: '2rem' } }} />
+      </Paper>
+    </Box>
+  );
+};
 
 const FeatureCard: React.FC<{
   icon: React.ReactNode;
@@ -245,6 +339,7 @@ const CategoryCard: React.FC<{
 const Home: React.FC = () => {
   const [content, setContent] = useState<Content | null>(null);
   const [categories, setCategories] = useState<Category[]>([]);
+  const [featuredProducts, setFeaturedProducts] = useState<{ newly_launched: Product | null; this_weeks_fresh: Product | null }>({ newly_launched: null, this_weeks_fresh: null });
   const [deliveryContent, setDeliveryContent] = useState<Content | null>(null);
   const [categoriesHeading, setCategoriesHeading] = useState<Content | null>(null);
   const [featuresHeading, setFeaturesHeading] = useState<Content | null>(null);
@@ -268,6 +363,13 @@ const Home: React.FC = () => {
 
         setContent(homeContent);
         setCategories(categoriesData);
+
+        // Fetch featured products
+        cachedApiCall('featured-products', () => productsAPI.getFeatured(), 5 * 60 * 1000)
+          .then(setFeaturedProducts)
+          .catch(() => {
+            console.warn('No featured products set');
+          });
 
         // Fetch secondary content in the background (non-blocking)
         Promise.all([
@@ -565,6 +667,15 @@ const Home: React.FC = () => {
             </Box>
           </Paper>
         </Fade>
+
+        {/* Featured Products Scrolling Banner */}
+        {(featuredProducts.newly_launched || featuredProducts.this_weeks_fresh) && (
+          <FeaturedProductsBanner 
+            newlyLaunched={featuredProducts.newly_launched}
+            thisWeeksFresh={featuredProducts.this_weeks_fresh}
+            onNavigate={(categoryId) => navigate(`/products?category=${categoryId}`)}
+          />
+        )}
 
         {/* Enhanced Categories Section */}
         <Box sx={{ mb: { xs: 6, md: 10 } }}>

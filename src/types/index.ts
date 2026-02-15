@@ -15,6 +15,9 @@ export interface Product {
   price: number;
   quantity: number;
   image_url?: string;
+  best_seller?: boolean;
+  newly_launched?: boolean;
+  this_weeks_fresh?: boolean;
   order?: number;
   created_at: string;
 }

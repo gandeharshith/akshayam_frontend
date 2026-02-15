@@ -433,23 +433,34 @@ const Products: React.FC = () => {
                 p: { xs: 2.5, md: 2 },
                 pb: { xs: 1.5, md: 2 }
               }}>
-                <Typography 
-                  variant="h6" 
-                  component="h3" 
-                  gutterBottom
-                  sx={{
-                    fontSize: { xs: '1.1rem', md: '1.25rem' },
-                    lineHeight: 1.4,
-                    fontWeight: 600,
-                    color: 'text.primary',
-                    mb: { xs: 1.5, md: 1 },
-                    minHeight: { xs: '2.8rem', md: 'auto' },
-                    display: 'flex',
-                    alignItems: 'center'
-                  }}
-                >
-                  {product.name}
-                </Typography>
+                <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', mb: 1 }}>
+                  <Typography 
+                    variant="h6" 
+                    component="h3" 
+                    sx={{
+                      fontSize: { xs: '1.1rem', md: '1.25rem' },
+                      lineHeight: 1.4,
+                      fontWeight: 600,
+                      color: 'text.primary',
+                      flex: 1,
+                      pr: 1
+                    }}
+                  >
+                    {product.name}
+                  </Typography>
+                  {product.best_seller && (
+                    <Chip
+                      label="Best Seller"
+                      color="warning"
+                      size="small"
+                      sx={{ 
+                        fontSize: { xs: '0.7rem', md: '0.75rem' },
+                        fontWeight: 600,
+                        height: { xs: 20, md: 24 }
+                      }}
+                    />
+                  )}
+                </Box>
                 <Typography 
                   variant="body2" 
                   color="text.secondary" 
