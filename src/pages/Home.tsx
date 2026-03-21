@@ -216,8 +216,6 @@ const CategoryCard: React.FC<{
   onNavigate: (categoryId: string) => void;
   delay?: number;
 }> = ({ category, onNavigate, delay = 0 }) => {
-  const theme = useTheme();
-  
   return (
     <Grow in={true} timeout={800} style={{ transitionDelay: `${delay}ms` }}>
       <Card
