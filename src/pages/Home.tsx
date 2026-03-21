@@ -248,27 +248,9 @@ const CategoryCard: React.FC<{
             '&::before': {
               opacity: 1,
             },
-            '& .category-content': {
-              color: 'white',
-              zIndex: 2,
-              position: 'relative',
-            },
             '& .category-arrow': {
               opacity: 1,
               transform: 'translateX(8px)',
-            }
-          },
-          // Ensure content is always visible on mobile
-          [theme.breakpoints.down('md')]: {
-            '& .category-content': {
-              backgroundColor: 'rgba(255,255,255,0.95)',
-              color: '#1a1a1a !important',
-              position: 'relative',
-              zIndex: 2,
-            },
-            '&:hover .category-content': {
-              backgroundColor: 'rgba(255,255,255,0.95)',
-              color: '#1a1a1a !important',
             }
           },
           '&:active': {

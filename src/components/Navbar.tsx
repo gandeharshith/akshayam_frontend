@@ -170,11 +170,7 @@ const Navbar: React.FC = () => {
                     fontWeight: 700,
                     fontSize: { xs: '1.1rem', sm: '1.25rem', md: '1.35rem' },
                     letterSpacing: '-0.02em',
-                    background: 'linear-gradient(135deg, #ffffff 0%, rgba(255,255,255,0.8) 100%)',
-                    WebkitBackgroundClip: 'text',
-                    WebkitTextFillColor: 'transparent',
-                    backgroundClip: 'text',
-                    textShadow: '0 1px 2px rgba(0,0,0,0.1)',
+                    color: '#ffffff',
                     lineHeight: 1.2
                   }}
                 >

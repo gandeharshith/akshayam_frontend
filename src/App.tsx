@@ -96,6 +96,7 @@ const AppContent: React.FC = () => {
 
 const theme = createTheme({
   palette: {
+    mode: 'light', // Always force light mode to prevent white-on-white issues on dark-mode devices
     primary: {
       main: '#2e7d32', // Deeper green for better contrast
       light: '#60ad5e',
