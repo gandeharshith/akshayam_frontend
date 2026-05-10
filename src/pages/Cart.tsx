@@ -1,634 +1,223 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import {
-  Container,
-  Typography,
-  Box,
-  Grid,
-  Card,
-  CardContent,
-  Button,
-  List,
-  ListItem,
-  Divider,
-  TextField,
-  Dialog,
-  DialogTitle,
-  DialogContent,
-  DialogActions,
-  CircularProgress,
-  IconButton,
-  Alert,
-  useTheme,
-  useMediaQuery
+  Container, Typography, Box, Grid, Button, TextField,
+  CircularProgress, Alert, IconButton, Divider, Chip
 } from '@mui/material';
-import {
-  Add,
-  Remove,
-  Delete,
-  ShoppingCartOutlined,
-  ArrowBack
-} from '@mui/icons-material';
-import { Link, useNavigate, useLocation } from 'react-router-dom';
+import { Add, Remove, Delete, ShoppingCart, ArrowForward, ArrowBack, CheckCircle } from '@mui/icons-material';
+import { useNavigate } from 'react-router-dom';
 import { useCart } from '../contexts/CartContext';
-import { ordersAPI, stockAPI, contentAPI } from '../services/api';
-import { User, OrderItem, StockValidationItem } from '../types';
+import { ordersAPI, stockAPI } from '../services/api';
+import { User } from '../types';
+
+const API_URL = (process.env as any).REACT_APP_API_URL || 'http://localhost:8000';
 
 const Cart: React.FC = () => {
-  const theme = useTheme();
-  const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
+  const { items, total, itemCount, updateQuantity, removeItem, clearCart, minOrderValue } = useCart();
   const navigate = useNavigate();
-  const location = useLocation();
-  const [checkoutOpen, setCheckoutOpen] = useState(false);
-  const [orderLoading, setOrderLoading] = useState(false);
-  const [stockValidationErrors, setStockValidationErrors] = useState<string[]>([]);
-  const [deliveryContent, setDeliveryContent] = useState<any>(null);
-  const [userInfo, setUserInfo] = useState<User & { password: string }>({
-    name: '',
-    email: '',
-    phone: '',
-    address: '',
-    password: ''
-  });
-  
-  // Check if this is an admin context (admin pages start with /adddmin)
-  const isAdminContext = location.pathname.startsWith('/adddmin');
+  const [step, setStep] = useState<'cart' | 'checkout' | 'success'>('cart');
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
+  const [userInfo, setUserInfo] = useState<User & { password: string }>({ name: '', email: '', phone: '', address: '', password: '' });
 
-  const {
-    items,
-    total,
-    itemCount,
-    removeItem,
-    updateQuantity,
-    clearCart,
-    minOrderValue
-  } = useCart();
-
-  // Fetch delivery schedule content
-  useEffect(() => {
-    const fetchData = async () => {
-      try {
-        // Fetch delivery content
-        const deliveryData = await contentAPI.getSection('delivery', 'schedule');
-        setDeliveryContent(deliveryData);
-      } catch (err) {
-        console.error('Error fetching delivery content:', err);
-      }
-    };
-
-    fetchData();
-  }, []);
-
-
-  const handleCheckout = async () => {
-    if (items.length === 0) return;
-
-    setOrderLoading(true);
-    
+  const handleProceed = async () => {
+    if (total < minOrderValue) { setError(`Minimum order value is ₹${minOrderValue}. Add ₹${(minOrderValue - total).toFixed(2)} more.`); return; }
     try {
-      const orderItems: OrderItem[] = items.map(item => ({
-        product_id: item.product._id,
-        product_name: item.product.name,
-        quantity: item.quantity,
-        price: item.product.price,
-        total: item.product.price * item.quantity
-      }));
-
-      await ordersAPI.create({
-        user_info: userInfo,
-        items: orderItems
-      });
-
-      clearCart();
-      setCheckoutOpen(false);
-      setStockValidationErrors([]);
-      setUserInfo({ name: '', email: '', phone: '', address: '', password: '' });
-      alert('Order placed successfully!');
-      navigate('/my-orders');
-    } catch (err: any) {
-      console.error('Error placing order:', err);
-      
-      // Handle detailed stock validation errors from the backend
-      if (err.response?.status === 400 && err.response?.data?.errors) {
-        const backendErrors = err.response.data.errors;
-        setStockValidationErrors(Array.isArray(backendErrors) ? backendErrors : [backendErrors]);
-      } else if (err.response?.data?.detail?.errors) {
-        setStockValidationErrors(err.response.data.detail.errors);
-      } else {
-        setStockValidationErrors(['Failed to place order. Please try again.']);
-      }
-    } finally {
-      setOrderLoading(false);
-    }
+      const r = await stockAPI.validateStock({ items: items.map(i => ({ product_id: i.product._id, quantity: i.quantity })) });
+      if (!r.valid) { setError(r.invalid_items.map(i => i.error).join(', ')); return; }
+      setError(''); setStep('checkout');
+    } catch { setError('Error validating stock. Please try again.'); }
   };
 
-  const handleCheckoutOpen = async () => {
-    if (items.length === 0) return;
-    
-    setStockValidationErrors([]);
-    
-    // Validate minimum order value for users (not admin)
-    if (!isAdminContext && total < minOrderValue) {
-      setStockValidationErrors([`Minimum order value is ₹${minOrderValue}. Current order total: ₹${total.toFixed(2)}`]);
-      return; // Don't open checkout dialog if minimum order value is not met
-    }
-    
+  const handleOrder = async () => {
+    if (!userInfo.name || !userInfo.email || !userInfo.phone || !userInfo.address || !userInfo.password) { setError('All fields are required.'); return; }
+    setLoading(true); setError('');
     try {
-      // Validate stock when user clicks "Proceed to Checkout"
-      const stockValidationItems: StockValidationItem[] = items.map(item => ({
-        product_id: item.product._id,
-        quantity: item.quantity
-      }));
-
-      const validationResult = await stockAPI.validateStock({
-        items: stockValidationItems
-      });
-
-      if (!validationResult.valid) {
-        const errorMessages = validationResult.invalid_items.map(item => item.error);
-        setStockValidationErrors(errorMessages);
-        return; // Don't open checkout dialog if validation fails
-      }
-
-      // If validation passes, open checkout dialog
-      setStockValidationErrors([]);
-      setCheckoutOpen(true);
-    } catch (err) {
-      console.error('Error validating stock:', err);
-      setStockValidationErrors(['Unable to validate stock availability. Please try again.']);
-    }
+      await ordersAPI.create({ user_info: userInfo, items: items.map(i => ({ product_id: i.product._id, product_name: i.product.name, quantity: i.quantity, price: i.product.price, total: i.product.price * i.quantity })) });
+      clearCart(); setStep('success');
+    } catch { setError('Failed to place order. Please try again.'); } finally { setLoading(false); }
   };
 
-  const isFormValid = () => {
-    return userInfo.name && userInfo.email && userInfo.phone && userInfo.address && userInfo.password;
-  };
-
-  return (
-    <Container maxWidth="lg" sx={{ py: { xs: 2, md: 4 }, px: { xs: 2, md: 3 } }}>
-      {/* Header */}
-      <Box sx={{ 
-        display: 'flex', 
-        alignItems: 'center', 
-        mb: { xs: 3, md: 4 },
-        gap: 2
-      }}>
-        <Button
-          startIcon={<ArrowBack />}
-          onClick={() => navigate('/products')}
-          variant="outlined"
-          size={isMobile ? "medium" : "medium"}
-        >
-          Continue Shopping
-        </Button>
-        <Typography 
-          variant={isMobile ? "h5" : "h4"} 
-          component="h1"
-          sx={{ flex: 1, textAlign: 'center' }}
-        >
-          Shopping Cart ({itemCount} {itemCount === 1 ? 'item' : 'items'})
+  /* ── Success ── */
+  if (step === 'success') return (
+    <Box sx={{ background: '#fafafa', minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', p: 2 }}>
+      <Box sx={{ textAlign: 'center', maxWidth: 480, animation: 'fadeInUp 0.6s ease both' }}>
+        <Box sx={{ width: 96, height: 96, borderRadius: '50%', background: 'linear-gradient(135deg,#15803d,#22c55e)', display: 'flex', alignItems: 'center', justifyContent: 'center', mx: 'auto', mb: 3, boxShadow: '0 16px 48px rgba(21,128,61,0.35)' }}>
+          <CheckCircle sx={{ color: 'white', fontSize: '3rem' }} />
+        </Box>
+        <Typography sx={{ fontWeight: 800, fontSize: { xs: '1.8rem', md: '2.2rem' }, color: '#18181b', mb: 1.5, letterSpacing: '-0.02em' }}>Order Placed!</Typography>
+        <Typography sx={{ color: '#71717a', fontSize: '1rem', lineHeight: 1.7, mb: 4 }}>
+          Your order has been placed successfully. You'll receive a confirmation soon. Track your order in My Orders.
         </Typography>
-      </Box>
-
-      {items.length === 0 ? (
-        /* Empty Cart */
-        <Box sx={{ 
-          textAlign: 'center', 
-          py: { xs: 4, md: 8 },
-          px: 2 
-        }}>
-          <ShoppingCartOutlined 
-            sx={{ 
-              fontSize: { xs: 60, md: 80 }, 
-              color: 'text.secondary', 
-              mb: 2 
-            }} 
-          />
-          <Typography 
-            variant="h5" 
-            color="text.secondary" 
-            gutterBottom
-            sx={{ fontSize: { xs: '1.25rem', md: '1.5rem' } }}
-          >
-            Your cart is empty
-          </Typography>
-          <Typography 
-            variant="body1" 
-            color="text.secondary" 
-            sx={{ mb: 3 }}
-          >
-            Add some products to get started
-          </Typography>
-          <Button
-            variant="contained"
-            size="large"
-            component={Link}
-            to="/products"
-            sx={{ 
-              px: { xs: 3, md: 4 },
-              py: { xs: 1.5, md: 1.5 }
-            }}
-          >
-            Browse Products
+        <Box sx={{ display: 'flex', gap: 2, justifyContent: 'center', flexDirection: { xs: 'column', sm: 'row' } }}>
+          <Button variant="contained" onClick={() => navigate('/products')} sx={{ background: 'linear-gradient(135deg,#15803d,#22c55e)', color: 'white', fontWeight: 700, px: 4, py: 1.5, borderRadius: '14px', textTransform: 'none', boxShadow: '0 4px 16px rgba(21,128,61,0.3)', '&:hover': { background: 'linear-gradient(135deg,#14532d,#15803d)' } }}>
+            Continue Shopping
+          </Button>
+          <Button variant="outlined" onClick={() => navigate('/my-orders')} sx={{ borderColor: '#15803d', color: '#15803d', fontWeight: 700, px: 4, py: 1.5, borderRadius: '14px', textTransform: 'none', '&:hover': { background: '#f0fdf4' } }}>
+            Track Orders
           </Button>
         </Box>
-      ) : (
-        /* Cart with Items */
-        <Grid container spacing={{ xs: 2, md: 4 }}>
-          {/* Cart Items */}
-          <Grid item xs={12} md={8}>
-            <Card elevation={isMobile ? 1 : 2}>
-              <CardContent sx={{ p: { xs: 2, md: 3 } }}>
-                <Typography 
-                  variant="h6" 
-                  gutterBottom
-                  sx={{ fontSize: { xs: '1.1rem', md: '1.25rem' } }}
-                >
-                  Cart Items
-                </Typography>
-                <Divider sx={{ mb: 2 }} />
-                
-                <List sx={{ p: 0 }}>
-                  {items.map((item, index) => (
-                    <React.Fragment key={item.product._id}>
-                      <ListItem 
-                        sx={{ 
-                          px: 0, 
-                          py: 2,
-                          flexDirection: isMobile ? 'column' : 'row',
-                          alignItems: isMobile ? 'stretch' : 'center',
-                          gap: isMobile ? 2 : 0
-                        }}
-                      >
-                        {/* Product Image */}
-                        {item.product.image_url && (
-                          <Box
-                            sx={{
-                              width: { xs: '100%', sm: 80 },
-                              height: { xs: 120, sm: 80 },
-                              mr: { xs: 0, sm: 2 },
-                              mb: { xs: 1, sm: 0 },
-                              borderRadius: 1,
-                              overflow: 'hidden',
-                              backgroundColor: '#f5f5f5',
-                              display: 'flex',
-                              alignItems: 'center',
-                              justifyContent: 'center'
-                            }}
-                          >
-                            <img
-                              src={`${process.env.REACT_APP_API_URL || 'http://localhost:8000'}${item.product.image_url}`}
-                              alt={item.product.name}
-                              style={{
-                                width: '100%',
-                                height: '100%',
-                                objectFit: 'cover'
-                              }}
-                            />
-                          </Box>
-                        )}
-                        
-                        {/* Product Info */}
-                        <Box sx={{ 
-                          flex: 1, 
-                          minWidth: 0,
-                          width: isMobile ? '100%' : 'auto'
-                        }}>
-                          <Typography 
-                            variant="h6" 
-                            sx={{ 
-                              fontSize: { xs: '1.1rem', md: '1.1rem' },
-                              fontWeight: 600,
-                              mb: 0.5,
-                              lineHeight: 1.4,
-                              color: 'text.primary'
-                            }}
-                          >
-                            {item.product.name}
-                          </Typography>
-                          <Typography 
-                            variant="body2"
-                            color="text.secondary"
-                            sx={{ 
-                              fontSize: { xs: '0.9rem', md: '0.875rem' },
-                              mb: isMobile ? 1 : 0,
-                              fontWeight: 500
-                            }}
-                          >
-                            ₹{item.product.price} each
-                          </Typography>
-                        </Box>
+      </Box>
+    </Box>
+  );
 
-                        {/* Quantity Controls */}
-                        <Box sx={{ 
-                          display: 'flex', 
-                          flexDirection: isMobile ? 'row' : 'row',
-                          alignItems: 'center',
-                          justifyContent: isMobile ? 'space-between' : 'flex-end',
-                          gap: isMobile ? 1 : 2,
-                          width: isMobile ? '100%' : 'auto',
-                          flexWrap: isMobile ? 'wrap' : 'nowrap'
-                        }}>
-                          <Box sx={{ 
-                            display: 'flex', 
-                            alignItems: 'center', 
-                            gap: 0.5,
-                            border: '1px solid',
-                            borderColor: 'divider',
-                            borderRadius: 1,
-                            px: 0.5
-                          }}>
-                            <IconButton
-                              size="small"
-                              onClick={() => updateQuantity(item.product._id, item.quantity - 1)}
-                              disabled={item.quantity <= 1}
-                              sx={{ p: 0.5 }}
-                            >
-                              <Remove fontSize="small" />
-                            </IconButton>
-                            <Typography 
-                              sx={{ 
-                                minWidth: 35, 
-                                textAlign: 'center',
-                                fontSize: { xs: '0.9rem', md: '1rem' },
-                                fontWeight: 500,
-                                px: 1,
-                                py: 0.5
-                              }}
-                            >
-                              {item.quantity}
-                            </Typography>
-                            <IconButton
-                              size="small"
-                              onClick={() => updateQuantity(item.product._id, item.quantity + 1)}
-                              sx={{ p: 0.5 }}
-                            >
-                              <Add fontSize="small" />
-                            </IconButton>
-                          </Box>
-                          
-                          <Box sx={{
-                            display: 'flex',
-                            alignItems: 'center',
-                            gap: 1,
-                            flexDirection: isMobile ? 'row' : 'row'
-                          }}>
-                            <Typography 
-                              variant="h6" 
-                              sx={{ 
-                                minWidth: isMobile ? 70 : 80,
-                                textAlign: 'right',
-                                fontSize: { xs: '0.95rem', md: '1.1rem' },
-                                fontWeight: 'bold',
-                                color: 'primary.main'
-                              }}
-                            >
-                              ₹{(item.product.price * item.quantity).toFixed(2)}
-                            </Typography>
-                            
-                            <IconButton
-                              color="error"
-                              onClick={() => removeItem(item.product._id)}
-                              size="small"
-                              sx={{ 
-                                p: { xs: 0.5, md: 1 },
-                                '&:hover': {
-                                  backgroundColor: 'error.light',
-                                  color: 'white'
-                                }
-                              }}
-                            >
-                              <Delete fontSize="small" />
-                            </IconButton>
-                          </Box>
-                        </Box>
-                      </ListItem>
-                      {index < items.length - 1 && <Divider />}
-                    </React.Fragment>
+  /* ── Empty Cart ── */
+  if (items.length === 0 && step === 'cart') return (
+    <Box sx={{ background: '#fafafa', minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', p: 2 }}>
+      <Box sx={{ textAlign: 'center', maxWidth: 400 }}>
+        <Box sx={{ fontSize: '5rem', mb: 2 }}>🛒</Box>
+        <Typography sx={{ fontWeight: 800, fontSize: '1.8rem', color: '#18181b', mb: 1.5, letterSpacing: '-0.02em' }}>Your cart is empty</Typography>
+        <Typography sx={{ color: '#71717a', mb: 4, lineHeight: 1.7 }}>Looks like you haven't added any products yet. Explore our organic collection!</Typography>
+        <Button variant="contained" onClick={() => navigate('/products')} endIcon={<ArrowForward />} sx={{ background: 'linear-gradient(135deg,#15803d,#22c55e)', color: 'white', fontWeight: 700, px: 4, py: 1.75, borderRadius: '14px', textTransform: 'none', boxShadow: '0 4px 16px rgba(21,128,61,0.3)', '&:hover': { background: 'linear-gradient(135deg,#14532d,#15803d)' } }}>
+          Shop Now
+        </Button>
+      </Box>
+    </Box>
+  );
+
+  return (
+    <Box sx={{ background: '#fafafa', minHeight: '100vh' }}>
+      {/* Header */}
+      <Box sx={{ background: 'linear-gradient(135deg,#0f4c25 0%,#15803d 60%,#16a34a 100%)', pt: { xs: 4, md: 6 }, pb: { xs: 6, md: 8 }, position: 'relative', overflow: 'hidden', '&::after': { content: '""', position: 'absolute', bottom: -2, left: 0, right: 0, height: 60, background: 'linear-gradient(to bottom,transparent,#fafafa)' } }}>
+        <Container maxWidth="lg" sx={{ px: { xs: 2, md: 3 }, position: 'relative', zIndex: 1 }}>
+          <Typography sx={{ color: 'rgba(255,255,255,0.7)', fontSize: '0.75rem', fontWeight: 600, letterSpacing: '0.1em', textTransform: 'uppercase', mb: 0.5 }}>
+            {step === 'cart' ? 'Your Cart' : 'Checkout'}
+          </Typography>
+          <Typography sx={{ fontWeight: 800, fontSize: { xs: '1.8rem', md: '2.5rem' }, color: 'white', letterSpacing: '-0.02em' }}>
+            {step === 'cart' ? `${itemCount} Item${itemCount !== 1 ? 's' : ''}` : 'Delivery Details'}
+          </Typography>
+          {/* Step indicator */}
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mt: 2 }}>
+            {['Cart', 'Checkout'].map((s, i) => (
+              <React.Fragment key={s}>
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.75 }}>
+                  <Box sx={{ width: 24, height: 24, borderRadius: '50%', background: (step === 'cart' && i === 0) || (step === 'checkout' && i <= 1) ? 'white' : 'rgba(255,255,255,0.3)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                    <Typography sx={{ fontSize: '0.7rem', fontWeight: 800, color: (step === 'cart' && i === 0) || (step === 'checkout' && i <= 1) ? '#15803d' : 'rgba(255,255,255,0.6)' }}>{i + 1}</Typography>
+                  </Box>
+                  <Typography sx={{ fontSize: '0.8rem', fontWeight: 600, color: (step === 'cart' && i === 0) || (step === 'checkout' && i <= 1) ? 'white' : 'rgba(255,255,255,0.5)' }}>{s}</Typography>
+                </Box>
+                {i < 1 && <Box sx={{ width: 32, height: 1, background: 'rgba(255,255,255,0.3)' }} />}
+              </React.Fragment>
+            ))}
+          </Box>
+        </Container>
+      </Box>
+
+      <Container maxWidth="lg" sx={{ px: { xs: 2, md: 3 }, py: { xs: 3, md: 5 } }}>
+        {error && <Alert severity="error" sx={{ borderRadius: '14px', mb: 3 }} onClose={() => setError('')}>{error}</Alert>}
+
+        <Grid container spacing={{ xs: 2.5, md: 4 }}>
+          {/* Left: Items / Form */}
+          <Grid item xs={12} md={7}>
+            {step === 'cart' ? (
+              <Box>
+                {items.map(item => (
+                  <Box key={item.product._id} sx={{ background: 'white', borderRadius: '20px', border: '1px solid rgba(0,0,0,0.06)', boxShadow: '0 2px 12px rgba(0,0,0,0.05)', p: { xs: 2, md: 2.5 }, mb: 2, display: 'flex', gap: 2, alignItems: 'center', transition: 'all 0.3s ease', '&:hover': { boxShadow: '0 8px 24px rgba(0,0,0,0.08)', borderColor: 'rgba(21,128,61,0.12)' } }}>
+                    <Box sx={{ width: { xs: 64, md: 80 }, height: { xs: 64, md: 80 }, borderRadius: '14px', background: '#f0fdf4', overflow: 'hidden', flexShrink: 0 }}>
+                      {item.product.image_url ? <img src={`${API_URL}${item.product.image_url}`} alt={item.product.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} /> : <Box sx={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1.8rem' }}>🌿</Box>}
+                    </Box>
+                    <Box sx={{ flex: 1, minWidth: 0 }}>
+                      <Typography sx={{ fontWeight: 700, fontSize: { xs: '0.9rem', md: '1rem' }, color: '#18181b', lineHeight: 1.3, mb: 0.5 }}>{item.product.name}</Typography>
+                      <Typography sx={{ fontSize: '0.8rem', color: '#71717a' }}>₹{item.product.price} per unit</Typography>
+                    </Box>
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.75, flexShrink: 0 }}>
+                      <IconButton size="small" onClick={() => updateQuantity(item.product._id, item.quantity - 1)} sx={{ width: 32, height: 32, background: '#f4f4f5', borderRadius: '10px', color: '#52525b', '&:hover': { background: '#e4e4e7' } }}><Remove sx={{ fontSize: '0.9rem' }} /></IconButton>
+                      <Typography sx={{ fontWeight: 800, fontSize: '1rem', minWidth: 28, textAlign: 'center', color: '#18181b' }}>{item.quantity}</Typography>
+                      <IconButton size="small" onClick={() => updateQuantity(item.product._id, item.quantity + 1)} sx={{ width: 32, height: 32, background: '#15803d', borderRadius: '10px', color: 'white', '&:hover': { background: '#14532d' } }}><Add sx={{ fontSize: '0.9rem' }} /></IconButton>
+                    </Box>
+                    <Box sx={{ textAlign: 'right', flexShrink: 0, minWidth: 64 }}>
+                      <Typography sx={{ fontWeight: 800, fontSize: '1rem', color: '#15803d' }}>₹{(item.product.price * item.quantity).toFixed(0)}</Typography>
+                      <IconButton size="small" onClick={() => removeItem(item.product._id)} sx={{ mt: 0.5, color: '#ef4444', width: 28, height: 28, '&:hover': { background: '#fee2e2' }, borderRadius: '8px' }}><Delete sx={{ fontSize: '0.9rem' }} /></IconButton>
+                    </Box>
+                  </Box>
+                ))}
+              </Box>
+            ) : (
+              <Box sx={{ background: 'white', borderRadius: '24px', border: '1px solid rgba(0,0,0,0.06)', boxShadow: '0 2px 12px rgba(0,0,0,0.05)', p: { xs: 2.5, md: 4 } }}>
+                <Typography sx={{ fontWeight: 700, fontSize: '1.1rem', color: '#18181b', mb: 3 }}>Delivery Information</Typography>
+                <Grid container spacing={2}>
+                  {[
+                    { label: 'Full Name', key: 'name', type: 'text', xs: 12 },
+                    { label: 'Email Address', key: 'email', type: 'email', xs: 12, sm: 6 },
+                    { label: 'Phone Number', key: 'phone', type: 'tel', xs: 12, sm: 6 },
+                    { label: 'Delivery Address', key: 'address', type: 'text', xs: 12, multiline: true, rows: 3 },
+                    { label: 'Password (for order tracking)', key: 'password', type: 'password', xs: 12, helper: "Set a password to track your orders later" },
+                  ].map(f => (
+                    <Grid item xs={f.xs} sm={(f as any).sm} key={f.key}>
+                      <TextField fullWidth label={f.label} type={f.type} multiline={f.multiline} rows={f.rows} value={(userInfo as any)[f.key]} onChange={e => setUserInfo({ ...userInfo, [f.key]: e.target.value })} helperText={f.helper} required
+                        sx={{ '& .MuiOutlinedInput-root': { borderRadius: '12px', '&.Mui-focused fieldset': { borderColor: '#15803d', borderWidth: '1.5px' } }, '& .MuiInputLabel-root.Mui-focused': { color: '#15803d' } }} />
+                    </Grid>
                   ))}
-                </List>
-              </CardContent>
-            </Card>
+                </Grid>
+              </Box>
+            )}
           </Grid>
 
-          {/* Order Summary */}
-          <Grid item xs={12} md={4}>
-            <Card elevation={isMobile ? 1 : 2} sx={{ position: { md: 'sticky' }, top: { md: 20 } }}>
-              <CardContent sx={{ p: { xs: 2, md: 3 } }}>
-                <Typography 
-                  variant="h6" 
-                  gutterBottom
-                  sx={{ fontSize: { xs: '1.1rem', md: '1.25rem' } }}
-                >
-                  Order Summary
-                </Typography>
-                <Divider sx={{ mb: 2 }} />
-                
-                <Box sx={{ mb: 3 }}>
-                  <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1 }}>
-                    <Typography variant="body2">Items ({itemCount}):</Typography>
-                    <Typography variant="body2">₹{total.toFixed(2)}</Typography>
-                  </Box>
-                  <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1 }}>
-                    <Typography variant="body2">Shipping:</Typography>
-                    <Typography variant="body2" color="success.main">Free</Typography>
-                  </Box>
-                  <Divider sx={{ my: 1 }} />
-                  <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
-                    <Typography 
-                      variant="h6"
-                      sx={{ fontSize: { xs: '1.1rem', md: '1.25rem' } }}
-                    >
-                      Total:
-                    </Typography>
-                    <Typography 
-                      variant="h6" 
-                      color="primary"
-                      sx={{ 
-                        fontSize: { xs: '1.1rem', md: '1.25rem' },
-                        fontWeight: 'bold'
-                      }}
-                    >
-                      ₹{total.toFixed(2)}
-                    </Typography>
-                  </Box>
+          {/* Right: Summary */}
+          <Grid item xs={12} md={5}>
+            <Box sx={{ background: 'white', borderRadius: '24px', border: '1px solid rgba(0,0,0,0.06)', boxShadow: '0 2px 12px rgba(0,0,0,0.05)', p: { xs: 2.5, md: 3.5 }, position: { md: 'sticky' }, top: { md: 24 } }}>
+              <Typography sx={{ fontWeight: 700, fontSize: '1.05rem', color: '#18181b', mb: 2.5 }}>Order Summary</Typography>
+
+              {items.map(item => (
+                <Box key={item.product._id} sx={{ display: 'flex', justifyContent: 'space-between', mb: 1.5 }}>
+                  <Typography sx={{ fontSize: '0.875rem', color: '#52525b', flex: 1, mr: 1 }}>{item.product.name} <span style={{ color: '#a1a1aa' }}>×{item.quantity}</span></Typography>
+                  <Typography sx={{ fontSize: '0.875rem', fontWeight: 600, color: '#18181b', flexShrink: 0 }}>₹{(item.product.price * item.quantity).toFixed(0)}</Typography>
                 </Box>
+              ))}
 
-                {/* Stock Validation Error Messages */}
-                {stockValidationErrors.length > 0 && (
-                  <Box sx={{ mb: 2 }}>
-                    {stockValidationErrors.map((error, index) => (
-                      <Alert key={index} severity="error" sx={{ mb: 1, fontSize: '0.875rem' }}>
-                        {error}
-                      </Alert>
-                    ))}
-                  </Box>
-                )}
+              <Divider sx={{ my: 2, borderColor: 'rgba(0,0,0,0.06)' }} />
 
-                <Alert severity="info" sx={{ mb: 3, fontSize: '0.875rem' }}>
-                  {deliveryContent?.content || 'Orders should be placed before every Wednesday 6 PM and will be delivered on Sunday'}
-                </Alert>
+              <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1 }}>
+                <Typography sx={{ fontSize: '0.875rem', color: '#71717a' }}>Subtotal</Typography>
+                <Typography sx={{ fontSize: '0.875rem', fontWeight: 600, color: '#18181b' }}>₹{total.toFixed(2)}</Typography>
+              </Box>
+              <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 2 }}>
+                <Typography sx={{ fontSize: '0.875rem', color: '#71717a' }}>Delivery</Typography>
+                <Chip label="Free" size="small" sx={{ background: '#dcfce7', color: '#15803d', fontWeight: 700, fontSize: '0.7rem', height: 20 }} />
+              </Box>
 
-                <Button
-                  fullWidth
-                  variant="contained"
-                  size="large"
-                  onClick={handleCheckoutOpen}
-                  sx={{
-                    py: { xs: 1.5, md: 1.5 },
-                    fontSize: { xs: '1rem', md: '1rem' },
-                    fontWeight: 'bold'
-                  }}
-                >
-                  Proceed to Checkout
-                </Button>
-              </CardContent>
-            </Card>
+              <Divider sx={{ mb: 2, borderColor: 'rgba(0,0,0,0.06)' }} />
+
+              <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 3 }}>
+                <Typography sx={{ fontWeight: 700, fontSize: '1.05rem', color: '#18181b' }}>Total</Typography>
+                <Typography sx={{ fontWeight: 800, fontSize: '1.3rem', color: '#15803d', letterSpacing: '-0.02em' }}>₹{total.toFixed(2)}</Typography>
+              </Box>
+
+              {total < minOrderValue && (
+                <Box sx={{ p: 2, borderRadius: '12px', background: '#fef3c7', border: '1px solid #fcd34d', mb: 2 }}>
+                  <Typography sx={{ fontSize: '0.8rem', color: '#92400e', fontWeight: 600 }}>
+                    Add ₹{(minOrderValue - total).toFixed(2)} more to meet the minimum order of ₹{minOrderValue}
+                  </Typography>
+                </Box>
+              )}
+
+              {step === 'cart' ? (
+                <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5 }}>
+                  <Button fullWidth variant="contained" onClick={handleProceed} endIcon={<ArrowForward />} disabled={total < minOrderValue}
+                    sx={{ background: 'linear-gradient(135deg,#15803d,#22c55e)', color: 'white', fontWeight: 700, py: 1.75, borderRadius: '14px', textTransform: 'none', fontSize: '1rem', boxShadow: '0 4px 16px rgba(21,128,61,0.3)', '&:hover': { background: 'linear-gradient(135deg,#14532d,#15803d)' }, '&.Mui-disabled': { background: '#e4e4e7', color: '#a1a1aa' } }}>
+                    Proceed to Checkout
+                  </Button>
+                  <Button fullWidth variant="outlined" onClick={() => navigate('/products')} startIcon={<ArrowBack />}
+                    sx={{ borderColor: 'rgba(0,0,0,0.12)', color: '#52525b', fontWeight: 600, py: 1.5, borderRadius: '14px', textTransform: 'none', '&:hover': { borderColor: '#15803d', color: '#15803d', background: '#f0fdf4' } }}>
+                    Continue Shopping
+                  </Button>
+                </Box>
+              ) : (
+                <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5 }}>
+                  <Button fullWidth variant="contained" onClick={handleOrder} disabled={loading || !userInfo.name || !userInfo.email || !userInfo.phone || !userInfo.address || !userInfo.password}
+                    sx={{ background: 'linear-gradient(135deg,#15803d,#22c55e)', color: 'white', fontWeight: 700, py: 1.75, borderRadius: '14px', textTransform: 'none', fontSize: '1rem', boxShadow: '0 4px 16px rgba(21,128,61,0.3)', '&:hover': { background: 'linear-gradient(135deg,#14532d,#15803d)' }, '&.Mui-disabled': { background: '#e4e4e7', color: '#a1a1aa' } }}>
+                    {loading ? <CircularProgress size={22} color="inherit" /> : 'Place Order'}
+                  </Button>
+                  <Button fullWidth variant="outlined" onClick={() => setStep('cart')} startIcon={<ArrowBack />}
+                    sx={{ borderColor: 'rgba(0,0,0,0.12)', color: '#52525b', fontWeight: 600, py: 1.5, borderRadius: '14px', textTransform: 'none', '&:hover': { borderColor: '#15803d', color: '#15803d', background: '#f0fdf4' } }}>
+                    Back to Cart
+                  </Button>
+                </Box>
+              )}
+            </Box>
           </Grid>
         </Grid>
-      )}
-
-      {/* Checkout Dialog */}
-      <Dialog 
-        open={checkoutOpen} 
-        onClose={() => setCheckoutOpen(false)} 
-        maxWidth="sm" 
-        fullWidth
-        fullScreen={isMobile}
-      >
-        <DialogTitle sx={{
-          fontSize: { xs: '1.1rem', md: '1.25rem' },
-          pb: { xs: 1, md: 2 }
-        }}>
-          Checkout
-        </DialogTitle>
-        <DialogContent sx={{ pb: 1 }}>
-          {/* Stock Validation Error Messages */}
-          {stockValidationErrors.length > 0 && (
-            <Box sx={{ mb: 2 }}>
-              {stockValidationErrors.map((error, index) => (
-                <Alert key={index} severity="error" sx={{ mb: 1 }}>
-                  {error}
-                </Alert>
-              ))}
-            </Box>
-          )}
-          
-          <Grid container spacing={{ xs: 2, md: 2 }} sx={{ mt: { xs: 0.5, md: 1 } }}>
-            <Grid item xs={12}>
-              <TextField
-                fullWidth
-                label="Full Name"
-                value={userInfo.name}
-                onChange={(e) => setUserInfo({ ...userInfo, name: e.target.value })}
-                required
-              />
-            </Grid>
-            <Grid item xs={12}>
-              <TextField
-                fullWidth
-                label="Email"
-                type="email"
-                value={userInfo.email}
-                onChange={(e) => setUserInfo({ ...userInfo, email: e.target.value })}
-                required
-              />
-            </Grid>
-            <Grid item xs={12}>
-              <TextField
-                fullWidth
-                label="Phone Number"
-                value={userInfo.phone}
-                onChange={(e) => setUserInfo({ ...userInfo, phone: e.target.value })}
-                required
-              />
-            </Grid>
-            <Grid item xs={12}>
-              <TextField
-                fullWidth
-                label="Address"
-                multiline
-                rows={isMobile ? 3 : 2}
-                value={userInfo.address}
-                onChange={(e) => setUserInfo({ ...userInfo, address: e.target.value })}
-                required
-              />
-            </Grid>
-            <Grid item xs={12}>
-              <TextField
-                fullWidth
-                label="Password (for order tracking)"
-                type="password"
-                value={userInfo.password}
-                onChange={(e) => setUserInfo({ ...userInfo, password: e.target.value })}
-                required
-                helperText="You'll need this password to check your order status"
-              />
-            </Grid>
-          </Grid>
-          
-          <Box sx={{ mt: { xs: 2, md: 3 } }}>
-            <Typography 
-              variant="h6" 
-              gutterBottom
-              sx={{ fontSize: { xs: '1rem', md: '1.25rem' } }}
-            >
-              Order Summary
-            </Typography>
-            <Box sx={{ 
-              maxHeight: { xs: 150, md: 200 }, 
-              overflow: 'auto',
-              mb: 2
-            }}>
-              {items.map((item) => (
-                <Box key={item.product._id} sx={{ 
-                  display: 'flex', 
-                  justifyContent: 'space-between', 
-                  mb: 1,
-                  alignItems: 'flex-start'
-                }}>
-                  <Typography sx={{ fontSize: '0.875rem', flex: 1, pr: 1 }}>
-                    {item.product.name} x {item.quantity}
-                  </Typography>
-                  <Typography sx={{ fontSize: '0.875rem', fontWeight: 500 }}>
-                    ₹{(item.product.price * item.quantity).toFixed(2)}
-                  </Typography>
-                </Box>
-              ))}
-            </Box>
-            <Divider sx={{ my: 2 }} />
-            <Box sx={{ display: 'flex', justifyContent: 'space-between', fontWeight: 'bold' }}>
-              <Typography variant="h6" sx={{ fontSize: { xs: '1rem', md: '1.25rem' } }}>
-                Total:
-              </Typography>
-              <Typography variant="h6" sx={{ fontSize: { xs: '1rem', md: '1.25rem' } }}>
-                ₹{total.toFixed(2)}
-              </Typography>
-            </Box>
-          </Box>
-        </DialogContent>
-        <DialogActions sx={{ 
-          px: { xs: 3, md: 3 }, 
-          pb: { xs: 3, md: 2 },
-          gap: 1,
-          flexDirection: isMobile ? 'column' : 'row'
-        }}>
-          <Button 
-            onClick={() => setCheckoutOpen(false)}
-            fullWidth={isMobile}
-          >
-            Cancel
-          </Button>
-          <Button
-            onClick={handleCheckout}
-            variant="contained"
-            disabled={!isFormValid() || orderLoading}
-            fullWidth={isMobile}
-            sx={{ minWidth: { xs: 'auto', md: 120 } }}
-          >
-            {orderLoading ? <CircularProgress size={20} /> : 'Place Order'}
-          </Button>
-        </DialogActions>
-      </Dialog>
-    </Container>
+      </Container>
+    </Box>
   );
 };
 

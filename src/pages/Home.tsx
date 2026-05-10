@@ -1,20 +1,15 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import {
   Container,
   Typography,
   Box,
   Grid,
-  Card,
-  CardContent,
   Button,
   Alert,
   Chip,
-  Paper,
-  Fade,
-  Grow,
+  Skeleton,
   useTheme,
   useMediaQuery,
-  Skeleton
 } from '@mui/material';
 import {
   Park,
@@ -22,7 +17,12 @@ import {
   ArrowForward,
   Star,
   Schedule,
-  CheckCircleOutline
+  CheckCircle,
+  LocalShipping,
+  Spa,
+  EmojiNature,
+  Favorite,
+  TrendingUp,
 } from '@mui/icons-material';
 import { useNavigate } from 'react-router-dom';
 import { contentAPI, categoriesAPI, productsAPI } from '../services/api';
@@ -30,7 +30,37 @@ import { cachedApiCall } from '../services/cache';
 import { Content, Category, Product } from '../types';
 import LazyImage from '../components/LazyImage';
 
-const FeaturedProductsBanner: React.FC<{
+declare const process: { env: { REACT_APP_API_URL?: string } };
+const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:8000';
+
+/* ─── Animated Counter ─── */
+const AnimatedNumber: React.FC<{ value: number; suffix?: string }> = ({ value, suffix = '' }) => {
+  const [count, setCount] = useState(0);
+  const ref = useRef<HTMLSpanElement>(null);
+  useEffect(() => {
+    const observer = new IntersectionObserver(([entry]) => {
+      if (entry.isIntersecting) {
+        let start = 0;
+        const duration = 1800;
+        const step = (ts: number) => {
+          if (!start) start = ts;
+          const progress = Math.min((ts - start) / duration, 1);
+          const eased = 1 - Math.pow(1 - progress, 3);
+          setCount(Math.floor(eased * value));
+          if (progress < 1) requestAnimationFrame(step);
+        };
+        requestAnimationFrame(step);
+        observer.disconnect();
+      }
+    }, { threshold: 0.5 });
+    if (ref.current) observer.observe(ref.current);
+    return () => observer.disconnect();
+  }, [value]);
+  return <span ref={ref}>{count}{suffix}</span>;
+};
+
+/* ─── Featured Banner ─── */
+const FeaturedBanner: React.FC<{
   newlyLaunched: Product | null;
   thisWeeksFresh: Product | null;
   onNavigate: (categoryId: string) => void;
@@ -40,294 +70,187 @@ const FeaturedProductsBanner: React.FC<{
 
   useEffect(() => {
     if (products.length <= 1) return;
-
-    const interval = setInterval(() => {
-      setCurrentIndex((prev) => (prev + 1) % products.length);
-    }, 1000);
-
+    const interval = setInterval(() => setCurrentIndex(p => (p + 1) % products.length), 3500);
     return () => clearInterval(interval);
   }, [products.length]);
 
   if (products.length === 0) return null;
-
-  const currentProduct = products[currentIndex];
-  const isNewlyLaunched = currentProduct === newlyLaunched;
+  const current = products[currentIndex];
+  const isNew = current === newlyLaunched;
 
   return (
     <Box
+      onClick={() => onNavigate(current.category_id)}
       sx={{
         mb: { xs: 4, md: 6 },
         cursor: 'pointer',
-        transition: 'all 0.5s ease',
+        borderRadius: '20px',
+        overflow: 'hidden',
+        background: isNew
+          ? 'linear-gradient(135deg, #fef3c7 0%, #fde68a 50%, #fbbf24 100%)'
+          : 'linear-gradient(135deg, #dcfce7 0%, #bbf7d0 50%, #4ade80 100%)',
+        border: isNew ? '1px solid #fcd34d' : '1px solid #86efac',
+        boxShadow: isNew ? '0 8px 32px rgba(245,158,11,0.2)' : '0 8px 32px rgba(34,197,94,0.2)',
+        transition: 'all 0.4s ease',
+        '&:hover': { transform: 'translateY(-3px)' },
       }}
-      onClick={() => onNavigate(currentProduct.category_id)}
     >
-      <Paper
-        elevation={3}
-        sx={{
-          background: isNewlyLaunched
-            ? 'linear-gradient(135deg, #ffb88c 0%, #ffc891 100%)'
-            : 'linear-gradient(135deg, #81c784 0%, #a5d6a7 100%)',
-          color: '#333',
-          p: { xs: 2, md: 3 },
-          borderRadius: 3,
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'space-between',
-          gap: 2,
-          transition: 'all 0.5s ease',
-          '&:hover': {
-            transform: 'translateY(-4px)',
-            boxShadow: '0 8px 24px rgba(0,0,0,0.2)',
-          },
-        }}
-      >
-        <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, flex: 1 }}>
-          <Box
-            sx={{
-              fontSize: { xs: '2rem', md: '3rem' },
-              animation: 'bounce 2s infinite',
-              '@keyframes bounce': {
-                '0%, 100%': { transform: 'translateY(0)' },
-                '50%': { transform: 'translateY(-10px)' },
-              },
-            }}
-          >
-            {isNewlyLaunched ? '🎉' : '🌱'}
-          </Box>
-          <Box sx={{ flex: 1 }}>
-            <Typography
-              variant="h6"
-              sx={{
-                fontWeight: 700,
-                fontSize: { xs: '1rem', md: '1.3rem' },
-                mb: 0.5,
-              }}
-            >
-              {isNewlyLaunched ? 'NEWLY LAUNCHED!' : "THIS WEEK'S FRESH!"}
-            </Typography>
-            <Typography
-              variant="body1"
-              sx={{
-                fontWeight: 600,
-                fontSize: { xs: '0.9rem', md: '1.1rem' },
-                opacity: 0.95,
-              }}
-            >
-              {currentProduct.name} - ₹{currentProduct.price}
-            </Typography>
-          </Box>
+      <Box sx={{ p: { xs: 2.5, md: 3.5 }, display: 'flex', alignItems: 'center', gap: 2 }}>
+        <Box sx={{
+          width: { xs: 52, md: 64 }, height: { xs: 52, md: 64 },
+          borderRadius: '16px',
+          background: isNew ? 'rgba(245,158,11,0.2)' : 'rgba(34,197,94,0.2)',
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          fontSize: { xs: '1.8rem', md: '2.2rem' }, flexShrink: 0,
+        }}>
+          {isNew ? '🎉' : '🌱'}
         </Box>
-        <ArrowForward sx={{ fontSize: { xs: '1.5rem', md: '2rem' } }} />
-      </Paper>
+        <Box sx={{ flex: 1, minWidth: 0 }}>
+          <Chip
+            label={isNew ? 'NEWLY LAUNCHED' : "THIS WEEK'S FRESH"}
+            size="small"
+            sx={{
+              background: isNew ? '#f59e0b' : '#16a34a', color: 'white',
+              fontWeight: 800, fontSize: '0.6rem', letterSpacing: '0.08em', height: 20, mb: 0.5,
+            }}
+          />
+          <Typography sx={{ fontWeight: 700, fontSize: { xs: '1rem', md: '1.2rem' }, color: '#18181b', lineHeight: 1.3, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+            {current.name}
+          </Typography>
+          <Typography sx={{ fontSize: '0.875rem', color: '#52525b', fontWeight: 600 }}>₹{current.price}</Typography>
+        </Box>
+        <Box sx={{
+          width: { xs: 36, md: 44 }, height: { xs: 36, md: 44 }, borderRadius: '12px',
+          background: isNew ? 'rgba(245,158,11,0.2)' : 'rgba(34,197,94,0.2)',
+          display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
+        }}>
+          <ArrowForward sx={{ color: isNew ? '#d97706' : '#15803d', fontSize: '1.1rem' }} />
+        </Box>
+      </Box>
     </Box>
   );
 };
 
+/* ─── Feature Card ─── */
 const FeatureCard: React.FC<{
-  icon: React.ReactNode;
-  title: string;
-  description: string;
-  delay?: number;
-}> = ({ icon, title, description, delay = 0 }) => {
-  return (
-    <Fade in={true} timeout={1000} style={{ transitionDelay: `${delay}ms` }}>
-      <Paper
-        elevation={0}
-        sx={{
-          p: { xs: 3, md: 4 },
-          textAlign: 'center',
-          height: '100%',
-          background: 'linear-gradient(135deg, #ffffff 0%, #f8fff8 100%)',
-          border: '1px solid rgba(46, 125, 50, 0.08)',
-          borderRadius: 4,
-          transition: 'all 0.4s cubic-bezier(0.4, 0, 0.2, 1)',
-          position: 'relative',
-          overflow: 'hidden',
-          '&::before': {
-            content: '""',
-            position: 'absolute',
-            top: 0,
-            left: 0,
-            right: 0,
-            height: '3px',
-            background: 'linear-gradient(90deg, #2e7d32, #4caf50, #66bb6a)',
-            transform: 'scaleX(0)',
-            transformOrigin: 'left',
-            transition: 'transform 0.4s ease',
-          },
-          '&:hover': {
-            transform: 'translateY(-8px)',
-            boxShadow: '0 16px 40px rgba(46, 125, 50, 0.15)',
-            '&::before': {
-              transform: 'scaleX(1)',
-            },
-            '& .feature-icon': {
-              transform: 'scale(1.1) rotate(5deg)',
-              color: '#2e7d32',
-            }
-          }
-        }}
-      >
-        <Box
-          className="feature-icon"
-          sx={{
-            display: 'inline-flex',
-            p: 2,
-            borderRadius: '50%',
-            backgroundColor: 'rgba(46, 125, 50, 0.08)',
-            color: '#4caf50',
-            mb: 2,
-            transition: 'all 0.4s cubic-bezier(0.4, 0, 0.2, 1)',
-            fontSize: '2rem'
-          }}
-        >
-          {icon}
-        </Box>
-        <Typography
-          variant="h6"
-          gutterBottom
-          sx={{
-            fontWeight: 700,
-            color: '#1a1a1a',
-            mb: 2,
-            fontSize: { xs: '1.1rem', md: '1.25rem' }
-          }}
-        >
-          {title}
-        </Typography>
-        <Typography
-          variant="body2"
-          sx={{
-            color: '#666666',
-            lineHeight: 1.6,
-            fontSize: { xs: '0.9rem', md: '1rem' }
-          }}
-        >
-          {description}
-        </Typography>
-      </Paper>
-    </Fade>
-  );
-};
+  icon: React.ReactNode; title: string; description: string; gradient: string; delay?: number;
+}> = ({ icon, title, description, gradient, delay = 0 }) => (
+  <Box sx={{
+    p: { xs: 3, md: 3.5 }, borderRadius: '20px', background: '#ffffff',
+    border: '1px solid rgba(0,0,0,0.06)', boxShadow: '0 2px 12px rgba(0,0,0,0.06)',
+    height: '100%', transition: 'all 0.4s cubic-bezier(0.34,1.56,0.64,1)',
+    position: 'relative', overflow: 'hidden',
+    animation: 'fadeInUp 0.6s ease both', animationDelay: `${delay}ms`,
+    '@keyframes fadeInUp': { from: { opacity: 0, transform: 'translateY(24px)' }, to: { opacity: 1, transform: 'translateY(0)' } },
+    '&::before': { content: '""', position: 'absolute', top: 0, left: 0, right: 0, height: '3px', background: gradient, opacity: 0, transition: 'opacity 0.3s ease' },
+    '&:hover': { transform: 'translateY(-8px)', boxShadow: '0 20px 48px rgba(0,0,0,0.12)', '&::before': { opacity: 1 } },
+  }}>
+    <Box sx={{ width: 56, height: 56, borderRadius: '16px', background: gradient, display: 'flex', alignItems: 'center', justifyContent: 'center', mb: 2.5, boxShadow: '0 8px 24px rgba(0,0,0,0.15)', color: 'white', fontSize: '1.5rem' }}>
+      {icon}
+    </Box>
+    <Typography sx={{ fontWeight: 700, fontSize: { xs: '1rem', md: '1.1rem' }, color: '#18181b', mb: 1, letterSpacing: '-0.01em' }}>{title}</Typography>
+    <Typography sx={{ fontSize: { xs: '0.875rem', md: '0.9rem' }, color: '#71717a', lineHeight: 1.6 }}>{description}</Typography>
+  </Box>
+);
 
-const CategoryCard: React.FC<{
-  category: Category;
-  onNavigate: (categoryId: string) => void;
-  delay?: number;
-}> = ({ category, onNavigate, delay = 0 }) => {
+/* ─── Category Card ─── */
+const CategoryCard: React.FC<{ category: Category; onNavigate: (id: string) => void; index: number }> = ({ category, onNavigate, index }) => {
+  const [hovered, setHovered] = useState(false);
   return (
-    <Grow in={true} timeout={800} style={{ transitionDelay: `${delay}ms` }}>
-      <Card
-        sx={{
-          height: '100%',
-          cursor: 'pointer',
-          borderRadius: 4,
-          overflow: 'hidden',
-          background: 'linear-gradient(135deg, #ffffff 0%, #f8fff8 100%)',
-          border: '1px solid rgba(46, 125, 50, 0.08)',
-          transition: 'all 0.4s cubic-bezier(0.4, 0, 0.2, 1)',
-          position: 'relative',
-          '&::before': {
-            content: '""',
-            position: 'absolute',
-            top: 0,
-            left: 0,
-            right: 0,
-            bottom: 0,
-            background: 'linear-gradient(135deg, rgba(46, 125, 50, 0.8) 0%, rgba(76, 175, 80, 0.6) 100%)',
-            opacity: 0,
-            transition: 'opacity 0.4s ease',
-            zIndex: 1,
-          },
-          '&:hover': {
-            transform: 'translateY(-8px)',
-            boxShadow: '0 20px 40px rgba(46, 125, 50, 0.2)',
-            '&::before': {
-              opacity: 1,
-            },
-            '& .category-arrow': {
-              opacity: 1,
-              transform: 'translateX(8px)',
-            }
-          },
-          '&:active': {
-            transform: 'translateY(-4px) scale(0.98)',
-          }
-        }}
-        onClick={() => onNavigate(category._id)}
-      >
-        {category.image_url && (
+    <Box
+      onClick={() => onNavigate(category._id)}
+      onMouseEnter={() => setHovered(true)}
+      onMouseLeave={() => setHovered(false)}
+      sx={{
+        borderRadius: '20px', overflow: 'hidden', cursor: 'pointer', background: '#ffffff',
+        border: '1px solid rgba(0,0,0,0.06)',
+        boxShadow: hovered ? '0 20px 48px rgba(21,128,61,0.18)' : '0 2px 12px rgba(0,0,0,0.06)',
+        transform: hovered ? 'translateY(-8px)' : 'translateY(0)',
+        transition: 'all 0.4s cubic-bezier(0.34,1.56,0.64,1)',
+        animation: 'fadeInUp 0.6s ease both', animationDelay: `${index * 120}ms`,
+        height: '100%', display: 'flex', flexDirection: 'column',
+      }}
+    >
+      <Box sx={{ height: { xs: 180, sm: 200, md: 220 }, overflow: 'hidden', position: 'relative', background: 'linear-gradient(135deg,#f0fdf4,#dcfce7)', flexShrink: 0 }}>
+        {category.image_url ? (
           <LazyImage
-            src={`${process.env.REACT_APP_API_URL || 'http://localhost:8000'}${category.image_url}`}
+            src={`${API_URL}${category.image_url}`}
             alt={category.name}
-            height={200}
-            sx={{
-              transition: 'transform 0.4s ease',
-              height: { xs: 180, md: 220 },
-            }}
+            height={220}
+            sx={{ transform: hovered ? 'scale(1.08)' : 'scale(1)', transition: 'transform 0.5s ease', width: '100%', height: '100%' }}
           />
+        ) : (
+          <Box sx={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '3rem' }}>🌿</Box>
         )}
-        <CardContent
-          className="category-content"
-          sx={{
-            p: { xs: 2.5, md: 3 },
-            transition: 'all 0.4s ease',
-            position: 'relative',
-            zIndex: 2,
-          }}
-        >
-          <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', mb: 1 }}>
-            <Typography
-              variant="h6"
-              component="h3"
-              sx={{
-                fontWeight: 700,
-                fontSize: { xs: '1.1rem', md: '1.25rem' },
-                lineHeight: 1.3,
-                transition: 'color 0.4s ease',
-              }}
-            >
-              {category.name}
-            </Typography>
-            <ArrowForward
-              className="category-arrow"
-              sx={{
-                opacity: 0,
-                transition: 'all 0.4s ease',
-                fontSize: '1.2rem',
-              }}
-            />
+        <Box sx={{
+          position: 'absolute', inset: 0,
+          background: 'linear-gradient(to top, rgba(15,76,37,0.7) 0%, transparent 60%)',
+          opacity: hovered ? 1 : 0, transition: 'opacity 0.3s ease',
+          display: 'flex', alignItems: 'flex-end', p: 2,
+        }}>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, color: 'white', fontWeight: 700, fontSize: '0.875rem', transform: hovered ? 'translateY(0)' : 'translateY(8px)', transition: 'transform 0.3s ease' }}>
+            Shop Now <ArrowForward sx={{ fontSize: '1rem' }} />
           </Box>
-          <Typography
-            variant="body2"
-            sx={{
-              fontSize: { xs: '0.875rem', md: '0.9rem' },
-              lineHeight: 1.5,
-              opacity: 0.8,
-              transition: 'color 0.4s ease',
-            }}
-          >
-            {category.description || 'Discover our organic products in this category'}
-          </Typography>
-        </CardContent>
-      </Card>
-    </Grow>
+        </Box>
+      </Box>
+      <Box sx={{ p: { xs: 2.5, md: 3 }, flex: 1, display: 'flex', flexDirection: 'column' }}>
+        <Typography sx={{ fontWeight: 700, fontSize: { xs: '1.05rem', md: '1.15rem' }, color: '#18181b', mb: 1, letterSpacing: '-0.01em' }}>{category.name}</Typography>
+        <Typography sx={{ fontSize: { xs: '0.85rem', md: '0.875rem' }, color: '#71717a', lineHeight: 1.6, flex: 1 }}>
+          {category.description || 'Discover our organic products in this category'}
+        </Typography>
+        <Box sx={{ mt: 2, display: 'flex', alignItems: 'center', gap: 0.5, color: '#15803d', fontWeight: 600, fontSize: '0.85rem' }}>
+          Explore <ArrowForward sx={{ fontSize: '0.9rem' }} />
+        </Box>
+      </Box>
+    </Box>
   );
 };
 
+/* ─── Stat Card ─── */
+const StatCard: React.FC<{ value: number; suffix: string; label: string; icon: React.ReactNode }> = ({ value, suffix, label, icon }) => (
+  <Box sx={{
+    textAlign: 'center', p: { xs: 2.5, md: 3 }, borderRadius: '20px',
+    background: 'rgba(255,255,255,0.1)', backdropFilter: 'blur(10px)',
+    border: '1px solid rgba(255,255,255,0.2)', transition: 'all 0.3s ease',
+    '&:hover': { background: 'rgba(255,255,255,0.18)', transform: 'translateY(-4px)' },
+  }}>
+    <Box sx={{ width: 48, height: 48, borderRadius: '14px', background: 'rgba(255,255,255,0.2)', display: 'flex', alignItems: 'center', justifyContent: 'center', mx: 'auto', mb: 1.5, color: 'white' }}>
+      {icon}
+    </Box>
+    <Typography sx={{ fontWeight: 800, fontSize: { xs: '1.6rem', md: '2rem' }, color: 'white', lineHeight: 1, mb: 0.5, letterSpacing: '-0.02em' }}>
+      <AnimatedNumber value={value} suffix={suffix} />
+    </Typography>
+    <Typography sx={{ fontSize: { xs: '0.75rem', md: '0.8rem' }, color: 'rgba(255,255,255,0.75)', fontWeight: 500 }}>{label}</Typography>
+  </Box>
+);
+
+/* ─── Section Header ─── */
+const SectionHeader: React.FC<{ eyebrow: string; title: string; subtitle?: string; icon?: React.ReactNode }> = ({ eyebrow, title, subtitle, icon }) => (
+  <Box sx={{ textAlign: 'center', mb: { xs: 4, md: 6 } }}>
+    <Box sx={{ display: 'inline-flex', alignItems: 'center', gap: 1, px: 2.5, py: 0.75, borderRadius: '100px', background: 'rgba(26,107,46,0.08)', border: '1px solid rgba(26,107,46,0.15)', mb: 2 }}>
+      {icon || <Spa sx={{ fontSize: '0.85rem', color: '#1a6b2e' }} />}
+      <Typography sx={{ color: '#1a6b2e', fontSize: '0.72rem', fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase' }}>{eyebrow}</Typography>
+    </Box>
+    <Typography component="h2" sx={{ fontFamily: '"Playfair Display", Georgia, serif', fontWeight: 700, fontSize: { xs: '1.9rem', sm: '2.4rem', md: '2.8rem' }, color: '#1a1a1a', letterSpacing: '-0.02em', mb: subtitle ? 1.5 : 0, lineHeight: 1.2 }}>
+      {title}
+    </Typography>
+    {subtitle && (
+      <Typography sx={{ color: '#666', maxWidth: 560, mx: 'auto', fontSize: { xs: '0.95rem', md: '1.05rem' }, lineHeight: 1.7 }}>{subtitle}</Typography>
+    )}
+  </Box>
+);
+
+/* ─── Main Home ─── */
 const Home: React.FC = () => {
   const [content, setContent] = useState<Content | null>(null);
   const [categories, setCategories] = useState<Category[]>([]);
   const [featuredProducts, setFeaturedProducts] = useState<{ newly_launched: Product | null; this_weeks_fresh: Product | null }>({ newly_launched: null, this_weeks_fresh: null });
   const [deliveryContent, setDeliveryContent] = useState<Content | null>(null);
-  const [categoriesHeading, setCategoriesHeading] = useState<Content | null>(null);
-  const [featuresHeading, setFeaturesHeading] = useState<Content | null>(null);
   const [feature1, setFeature1] = useState<Content | null>(null);
   const [feature2, setFeature2] = useState<Content | null>(null);
   const [feature3, setFeature3] = useState<Content | null>(null);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string>('');
+  const [error, setError] = useState('');
   const navigate = useNavigate();
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('md'));
@@ -335,77 +258,38 @@ const Home: React.FC = () => {
   useEffect(() => {
     const fetchData = async () => {
       try {
-        // Fetch critical data first (home content and categories)
         const [homeContent, categoriesData] = await Promise.all([
-          cachedApiCall('home-content', () => contentAPI.get('home'), 10 * 60 * 1000), // Cache for 10 minutes
-          cachedApiCall('categories', () => categoriesAPI.getAll(), 5 * 60 * 1000) // Cache for 5 minutes
+          cachedApiCall('home-content', () => contentAPI.get('home'), 10 * 60 * 1000),
+          cachedApiCall('categories', () => categoriesAPI.getAll(), 5 * 60 * 1000),
         ]);
-
         setContent(homeContent);
         setCategories(categoriesData);
-
-        // Fetch featured products
-        cachedApiCall('featured-products', () => productsAPI.getFeatured(), 5 * 60 * 1000)
-          .then(setFeaturedProducts)
-          .catch(() => {
-            console.warn('No featured products set');
-          });
-
-        // Fetch secondary content in the background (non-blocking)
+        cachedApiCall('featured-products', () => productsAPI.getFeatured(), 5 * 60 * 1000).then(setFeaturedProducts).catch(() => {});
         Promise.all([
           cachedApiCall('delivery-schedule', () => contentAPI.getSection('delivery', 'schedule'), 30 * 60 * 1000).catch(() => null),
-          cachedApiCall('categories-heading', () => contentAPI.getSection('home', 'categories_heading'), 30 * 60 * 1000).catch(() => null),
-          cachedApiCall('features-heading', () => contentAPI.getSection('home', 'features_heading'), 30 * 60 * 1000).catch(() => null),
           cachedApiCall('feature-1', () => contentAPI.getSection('home', 'feature_1'), 30 * 60 * 1000).catch(() => null),
           cachedApiCall('feature-2', () => contentAPI.getSection('home', 'feature_2'), 30 * 60 * 1000).catch(() => null),
-          cachedApiCall('feature-3', () => contentAPI.getSection('home', 'feature_3'), 30 * 60 * 1000).catch(() => null)
-        ]).then(([
-          deliveryData,
-          categoriesHeadingData,
-          featuresHeadingData,
-          feature1Data,
-          feature2Data,
-          feature3Data
-        ]) => {
-          setDeliveryContent(deliveryData);
-          setCategoriesHeading(categoriesHeadingData);
-          setFeaturesHeading(featuresHeadingData);
-          setFeature1(feature1Data);
-          setFeature2(feature2Data);
-          setFeature3(feature3Data);
-        }).catch(err => {
-          console.warn('Error fetching secondary content:', err);
-          // Don't set error state for secondary content failures
-        });
-
-      } catch (err) {
+          cachedApiCall('feature-3', () => contentAPI.getSection('home', 'feature_3'), 30 * 60 * 1000).catch(() => null),
+        ]).then(([d, f1, f2, f3]) => { setDeliveryContent(d); setFeature1(f1); setFeature2(f2); setFeature3(f3); }).catch(() => {});
+      } catch {
         setError('Failed to load content');
-        console.error('Error fetching data:', err);
       } finally {
         setLoading(false);
       }
     };
-
     fetchData();
   }, []);
 
   if (loading) {
     return (
       <Container maxWidth="xl" sx={{ py: 4 }}>
-        {/* Hero Skeleton */}
-        <Box sx={{ textAlign: 'center', py: 8, mb: 6 }}>
-          <Skeleton variant="rectangular" height={100} sx={{ mb: 3, borderRadius: 2 }} />
-          <Skeleton variant="text" height={60} sx={{ mb: 2 }} />
-          <Skeleton variant="text" height={40} width="60%" sx={{ mx: 'auto', mb: 3 }} />
-          <Skeleton variant="rectangular" height={50} width={150} sx={{ mx: 'auto', borderRadius: 3 }} />
-        </Box>
-        {/* Categories Skeleton */}
-        <Grid container spacing={4}>
-          {[1, 2, 3].map((item) => (
-            <Grid item xs={12} sm={6} md={4} key={item}>
-              <Skeleton variant="rectangular" height={200} sx={{ borderRadius: 4, mb: 2 }} />
-              <Skeleton variant="text" height={30} />
-              <Skeleton variant="text" height={20} />
+        <Skeleton variant="rectangular" height={isMobile ? 300 : 420} sx={{ borderRadius: '24px', mb: 4 }} />
+        <Grid container spacing={3}>
+          {[1, 2, 3].map(i => (
+            <Grid item xs={12} sm={6} md={4} key={i}>
+              <Skeleton variant="rectangular" height={280} sx={{ borderRadius: '20px', mb: 2 }} />
+              <Skeleton variant="text" height={28} sx={{ mb: 1 }} />
+              <Skeleton variant="text" height={20} width="70%" />
             </Grid>
           ))}
         </Grid>
@@ -413,363 +297,155 @@ const Home: React.FC = () => {
     );
   }
 
-  if (error) {
-    return (
-      <Container sx={{ py: 4 }}>
-        <Alert 
-          severity="error" 
-          sx={{ 
-            borderRadius: 3,
-            boxShadow: '0 4px 12px rgba(244, 67, 54, 0.1)'
-          }}
-        >
-          {error}
-        </Alert>
-      </Container>
-    );
-  }
+  if (error) return <Container sx={{ py: 4 }}><Alert severity="error" sx={{ borderRadius: '14px' }}>{error}</Alert></Container>;
 
-  const defaultFeatures = [
-    {
-      icon: <Park />,
-      title: feature1?.title || '100% Organic',
-      description: feature1?.content || 'All our products are certified organic or self produced from cow based natural farming'
-    },
-    {
-      icon: <VerifiedUser />,
-      title: feature2?.title || 'Quality Assured',
-      description: feature2?.content || 'Every product undergoes rigorous quality checks before reaching you'
-    },
-    {
-      icon: <Schedule />,
-      title: feature3?.title || 'Delivery Schedule',
-      description: feature3?.content || deliveryContent?.content || 'Orders should be placed before every Wednesday 6 PM and the shipment will be delivered on Sunday'
-    }
+  const features = [
+    { icon: <Park fontSize="inherit" />, title: feature1?.title || '100% Organic', description: feature1?.content || 'All our products are certified organic or self-produced from cow-based natural farming practices.', gradient: 'linear-gradient(135deg,#1a6b2e,#2d9e4a)' },
+    { icon: <VerifiedUser fontSize="inherit" />, title: feature2?.title || 'Quality Assured', description: feature2?.content || 'Every product undergoes rigorous quality checks before reaching you — no compromises.', gradient: 'linear-gradient(135deg,#0277bd,#0288d1)' },
+    { icon: <Schedule fontSize="inherit" />, title: feature3?.title || 'Delivery Schedule', description: feature3?.content || deliveryContent?.content || 'Order before Wednesday 6 PM and receive your delivery on Sunday.', gradient: 'linear-gradient(135deg,#e65100,#f57c00)' },
+  ];
+
+  const stats = [
+    { value: 100, suffix: '%', label: 'Organic Products', icon: <EmojiNature /> },
+    { value: 500, suffix: '+', label: 'Happy Customers', icon: <Favorite /> },
+    { value: 50, suffix: '+', label: 'Product Varieties', icon: <TrendingUp /> },
+    { value: 5, suffix: '★', label: 'Customer Rating', icon: <Star /> },
   ];
 
   return (
-    <Box sx={{ minHeight: '100vh' }}>
-      <Container maxWidth="xl" sx={{ py: { xs: 2, md: 4 } }}>
-        {/* Enhanced Hero Section */}
-        <Fade in={true} timeout={1200}>
-          <Paper
-            elevation={0}
-            sx={{
-              textAlign: 'center',
-              py: { xs: 6, md: 10 },
-              px: { xs: 3, md: 6 },
-              mb: { xs: 4, md: 8 },
-              background: 'linear-gradient(135deg, #2e7d32 0%, #388e3c 30%, #4caf50 70%, #66bb6a 100%)',
-              color: 'white',
-              borderRadius: 6,
-              position: 'relative',
-              overflow: 'hidden',
-              '&::before': {
-                content: '""',
-                position: 'absolute',
-                top: 0,
-                left: 0,
-                right: 0,
-                bottom: 0,
-                background: 'radial-gradient(circle at 30% 20%, rgba(255,255,255,0.1) 0%, transparent 50%), radial-gradient(circle at 70% 80%, rgba(255,255,255,0.05) 0%, transparent 50%)',
-                pointerEvents: 'none',
-              }
-            }}
-          >
+    <Box sx={{ minHeight: '100vh', background: '#f9fdf9' }}>
+
+      {/* ═══ HERO ═══ */}
+      <Box sx={{
+        position: 'relative', overflow: 'hidden',
+        background: 'linear-gradient(135deg,#0d4a1e 0%,#1a6b2e 40%,#2d9e4a 80%,#3db85a 100%)',
+        pt: { xs: 6, md: 10 }, pb: { xs: 8, md: 12 },
+        '&::before': { content: '""', position: 'absolute', top: -100, right: -100, width: { xs: 300, md: 500 }, height: { xs: 300, md: 500 }, borderRadius: '50%', background: 'radial-gradient(circle,rgba(255,255,255,0.06) 0%,transparent 70%)', pointerEvents: 'none' },
+        '&::after': { content: '""', position: 'absolute', bottom: -80, left: -80, width: { xs: 200, md: 350 }, height: { xs: 200, md: 350 }, borderRadius: '50%', background: 'radial-gradient(circle,rgba(240,165,0,0.08) 0%,transparent 70%)', pointerEvents: 'none' },
+      }}>
+        <Container maxWidth="lg" sx={{ position: 'relative', zIndex: 1 }}>
+          <Box sx={{ textAlign: 'center' }}>
             {content?.logo_url && (
-              <Box sx={{ mb: { xs: 3, md: 4 }, display: 'flex', justifyContent: 'center', position: 'relative', zIndex: 1 }}>
-                <Box
-                  sx={{
-                    p: 2,
-                    borderRadius: '50%',
-                    backgroundColor: 'rgba(255,255,255,0.15)',
-                    backdropFilter: 'blur(10px)',
-                    border: '1px solid rgba(255,255,255,0.2)',
-                  }}
-                >
-                  <LazyImage
-                    src={`${process.env.REACT_APP_API_URL || 'http://localhost:8000'}${content.logo_url}`}
-                    alt="Akshayam Wellness Logo"
-                    height={isMobile ? 80 : 120}
-                    width="auto"
-                    sx={{
-                      filter: 'drop-shadow(0 4px 8px rgba(0,0,0,0.2))',
-                      '& img': {
-                        objectFit: 'contain'
-                      }
-                    }}
-                  />
+              <Box sx={{ mb: { xs: 3, md: 4 }, display: 'flex', justifyContent: 'center', animation: 'scaleIn 0.7s ease both', '@keyframes scaleIn': { from: { opacity: 0, transform: 'scale(0.8)' }, to: { opacity: 1, transform: 'scale(1)' } } }}>
+                <Box sx={{ p: { xs: 2, md: 2.5 }, borderRadius: '50%', background: 'rgba(255,255,255,0.12)', backdropFilter: 'blur(20px)', border: '2px solid rgba(255,255,255,0.2)', boxShadow: '0 8px 32px rgba(0,0,0,0.2)' }}>
+                  <LazyImage src={`${API_URL}${content.logo_url}`} alt="Akshayam Wellness Logo" height={isMobile ? 80 : 110} width="auto" sx={{ filter: 'drop-shadow(0 4px 12px rgba(0,0,0,0.25))' }} />
                 </Box>
               </Box>
             )}
 
-            <Box sx={{ position: 'relative', zIndex: 1 }}>
-              <Typography
-                variant="h1"
-                component="h1"
-                gutterBottom
-                sx={{
-                  fontSize: { xs: '2.2rem', sm: '3rem', md: '3.5rem', lg: '4rem' },
-                  fontWeight: 800,
-                  lineHeight: { xs: 1.2, md: 1.1 },
-                  mb: { xs: 2, md: 3 },
-                  letterSpacing: '-0.02em',
-                  textShadow: '0 4px 8px rgba(0,0,0,0.1)',
-                }}
-              >
-                {content?.title || 'Welcome to Akshayam Wellness'}
-              </Typography>
-
-              <Typography
-                variant="h5"
-                sx={{
-                  mb: { xs: 3, md: 4 },
-                  maxWidth: 900,
-                  mx: 'auto',
-                  fontSize: { xs: '1.1rem', sm: '1.3rem', md: '1.4rem' },
-                  fontWeight: 400,
-                  px: { xs: 2, sm: 4 },
-                  opacity: 0.95,
-                  lineHeight: 1.5,
-                }}
-              >
-                {content?.content || 'Your trusted partner in organic wellness products'}
-              </Typography>
-
-              <Box sx={{ 
-                display: 'flex', 
-                gap: { xs: 3, md: 2 }, 
-                justifyContent: 'center', 
-                flexDirection: { xs: 'column', sm: 'row' },
-                alignItems: 'center',
-                maxWidth: { xs: '100%', sm: 'auto' },
-                px: { xs: 2, sm: 0 }
-              }}>
-                <Button
-                  variant="contained"
-                  size="large"
-                  onClick={() => navigate('/products')}
-                  endIcon={<ArrowForward />}
-                  sx={{
-                    backgroundColor: 'rgba(255,255,255,0.9)',
-                    color: '#2e7d32',
-                    fontSize: { xs: '1.1rem', md: '1.1rem' },
-                    px: { xs: 5, md: 5 },
-                    py: { xs: 2, md: 2 },
-                    minHeight: { xs: '52px', md: '56px' },
-                    minWidth: { xs: '200px', sm: 'auto' },
-                    fontWeight: 700,
-                    borderRadius: 3,
-                    textTransform: 'none',
-                    boxShadow: '0 4px 20px rgba(0,0,0,0.15)',
-                    border: '1px solid rgba(255,255,255,0.3)',
-                    '&:hover': {
-                      backgroundColor: 'white',
-                      transform: 'translateY(-2px)',
-                      boxShadow: '0 8px 30px rgba(0,0,0,0.2)',
-                    },
-                    '&:active': {
-                      transform: 'translateY(0) scale(0.98)',
-                    }
-                  }}
-                >
-                  Shop Now
-                </Button>
-
-                <Button
-                  variant="outlined"
-                  size="large"
-                  onClick={() => navigate('/about')}
-                  sx={{
-                    color: 'white',
-                    borderColor: 'rgba(255,255,255,0.5)',
-                    fontSize: { xs: '1.1rem', md: '1.1rem' },
-                    px: { xs: 5, md: 5 },
-                    py: { xs: 2, md: 2 },
-                    minHeight: { xs: '52px', md: '56px' },
-                    minWidth: { xs: '200px', sm: 'auto' },
-                    fontWeight: 600,
-                    borderRadius: 3,
-                    textTransform: 'none',
-                    backdropFilter: 'blur(10px)',
-                    backgroundColor: 'rgba(255,255,255,0.1)',
-                    '&:hover': {
-                      borderColor: 'white',
-                      backgroundColor: 'rgba(255,255,255,0.2)',
-                      transform: 'translateY(-2px)',
-                    },
-                    '&:active': {
-                      transform: 'translateY(0) scale(0.98)',
-                    }
-                  }}
-                >
-                  Learn More
-                </Button>
-              </Box>
+            <Box sx={{ display: 'inline-flex', alignItems: 'center', gap: 1, px: 2.5, py: 0.75, borderRadius: '100px', background: 'rgba(255,255,255,0.12)', border: '1px solid rgba(255,255,255,0.2)', mb: { xs: 2.5, md: 3 }, animation: 'fadeInDown 0.6s ease 0.1s both', '@keyframes fadeInDown': { from: { opacity: 0, transform: 'translateY(-16px)' }, to: { opacity: 1, transform: 'translateY(0)' } } }}>
+              <Spa sx={{ fontSize: '0.9rem', color: '#a8e6b8' }} />
+              <Typography sx={{ color: 'rgba(168,230,184,0.95)', fontSize: '0.75rem', fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase' }}>Certified Organic Wellness</Typography>
             </Box>
 
-            {/* Floating Quality Indicators */}
-            <Box
-              sx={{
-                position: 'absolute',
-                top: { xs: 20, md: 30 },
-                right: { xs: 20, md: 30 },
-                display: 'flex',
-                flexDirection: 'column',
-                gap: 1,
-                zIndex: 1,
-              }}
-            >
-              <Chip
-                icon={<Star sx={{ color: '#ffd700 !important' }} />}
-                label="Premium Quality"
-                size="small"
-                sx={{
-                  backgroundColor: 'rgba(255,255,255,0.2)',
-                  color: 'white',
-                  fontWeight: 600,
-                  backdropFilter: 'blur(10px)',
-                  border: '1px solid rgba(255,255,255,0.2)',
-                }}
-              />
-              <Chip
-                icon={<CheckCircleOutline sx={{ color: '#4caf50 !important' }} />}
-                label="Certified Organic"
-                size="small"
-                sx={{
-                  backgroundColor: 'rgba(255,255,255,0.2)',
-                  color: 'white',
-                  fontWeight: 600,
-                  backdropFilter: 'blur(10px)',
-                  border: '1px solid rgba(255,255,255,0.2)',
-                }}
-              />
-            </Box>
-          </Paper>
-        </Fade>
+            <Typography component="h1" sx={{ fontFamily: '"Playfair Display",Georgia,serif', fontWeight: 800, fontSize: { xs: '2.2rem', sm: '3rem', md: '3.8rem', lg: '4.4rem' }, lineHeight: { xs: 1.15, md: 1.1 }, color: '#ffffff', mb: { xs: 2, md: 2.5 }, letterSpacing: '-0.02em', textShadow: '0 4px 16px rgba(0,0,0,0.15)', animation: 'fadeInUp 0.7s ease 0.2s both', '@keyframes fadeInUp': { from: { opacity: 0, transform: 'translateY(24px)' }, to: { opacity: 1, transform: 'translateY(0)' } } }}>
+              {content?.title || 'Welcome to Akshayam Wellness'}
+            </Typography>
 
-        {/* Featured Products Scrolling Banner */}
+            <Typography sx={{ color: 'rgba(255,255,255,0.85)', fontSize: { xs: '1rem', sm: '1.15rem', md: '1.25rem' }, fontWeight: 400, maxWidth: 680, mx: 'auto', lineHeight: 1.7, mb: { xs: 4, md: 5 }, px: { xs: 1, md: 0 }, animation: 'fadeInUp 0.7s ease 0.35s both' }}>
+              {content?.content || 'Your trusted partner in organic wellness — pure, natural products crafted with care for your health and the planet.'}
+            </Typography>
+
+            <Box sx={{ display: 'flex', gap: { xs: 2, md: 2.5 }, justifyContent: 'center', flexDirection: { xs: 'column', sm: 'row' }, alignItems: 'center', px: { xs: 2, sm: 0 }, animation: 'fadeInUp 0.7s ease 0.5s both' }}>
+              <Button variant="contained" size="large" onClick={() => navigate('/products')} endIcon={<ArrowForward />}
+                sx={{ background: 'linear-gradient(135deg,#f0a500,#ffc53d)', color: '#0d4a1e', fontWeight: 800, fontSize: { xs: '1rem', md: '1.05rem' }, px: { xs: 4, md: 5 }, py: { xs: 1.6, md: 1.8 }, borderRadius: '14px', textTransform: 'none', boxShadow: '0 8px 32px rgba(240,165,0,0.4)', minWidth: { xs: '200px', sm: 'auto' }, '&:hover': { background: 'linear-gradient(135deg,#ffc53d,#f0a500)', transform: 'translateY(-3px)', boxShadow: '0 12px 40px rgba(240,165,0,0.5)' } }}>
+                Shop Now
+              </Button>
+              <Button variant="outlined" size="large" onClick={() => navigate('/about')}
+                sx={{ color: 'white', borderColor: 'rgba(255,255,255,0.4)', fontWeight: 600, fontSize: { xs: '1rem', md: '1.05rem' }, px: { xs: 4, md: 5 }, py: { xs: 1.6, md: 1.8 }, borderRadius: '14px', textTransform: 'none', backdropFilter: 'blur(10px)', background: 'rgba(255,255,255,0.08)', minWidth: { xs: '200px', sm: 'auto' }, '&:hover': { borderColor: 'rgba(255,255,255,0.7)', background: 'rgba(255,255,255,0.15)', transform: 'translateY(-2px)' } }}>
+                Our Story
+              </Button>
+            </Box>
+
+            <Box sx={{ display: 'flex', gap: { xs: 1.5, md: 2 }, justifyContent: 'center', flexWrap: 'wrap', mt: { xs: 4, md: 5 }, animation: 'fadeInUp 0.7s ease 0.65s both' }}>
+              {[
+                { icon: <CheckCircle sx={{ fontSize: '0.9rem' }} />, label: 'Certified Organic' },
+                { icon: <Star sx={{ fontSize: '0.9rem' }} />, label: 'Premium Quality' },
+                { icon: <LocalShipping sx={{ fontSize: '0.9rem' }} />, label: 'Weekly Delivery' },
+              ].map(badge => (
+                <Box key={badge.label} sx={{ display: 'flex', alignItems: 'center', gap: 0.75, px: 2, py: 0.75, borderRadius: '100px', background: 'rgba(255,255,255,0.1)', border: '1px solid rgba(255,255,255,0.15)', color: 'rgba(255,255,255,0.9)', fontSize: '0.78rem', fontWeight: 600, backdropFilter: 'blur(10px)' }}>
+                  {badge.icon}{badge.label}
+                </Box>
+              ))}
+            </Box>
+          </Box>
+        </Container>
+        <Box sx={{ position: 'absolute', bottom: -2, left: 0, right: 0, height: { xs: 40, md: 60 }, background: '#f9fdf9', clipPath: 'ellipse(55% 100% at 50% 100%)' }} />
+      </Box>
+
+      <Container maxWidth="xl" sx={{ py: { xs: 4, md: 6 }, px: { xs: 2, md: 3 } }}>
+
+        {/* ═══ FEATURED BANNER ═══ */}
         {(featuredProducts.newly_launched || featuredProducts.this_weeks_fresh) && (
-          <FeaturedProductsBanner 
+          <FeaturedBanner
             newlyLaunched={featuredProducts.newly_launched}
             thisWeeksFresh={featuredProducts.this_weeks_fresh}
-            onNavigate={(categoryId) => navigate(`/products?category=${categoryId}`)}
+            onNavigate={categoryId => navigate(`/products?category=${categoryId}`)}
           />
         )}
 
-        {/* Enhanced Categories Section */}
-        <Box sx={{ mb: { xs: 6, md: 10 } }}>
-          <Fade in={true} timeout={1000}>
-            <Box sx={{ textAlign: 'center', mb: { xs: 4, md: 6 } }}>
-              <Typography
-                variant="h2"
-                component="h2"
-                sx={{
-                  fontSize: { xs: '2rem', sm: '2.5rem', md: '3rem' },
-                  fontWeight: 700,
-                  mb: 2,
-                  color: '#1a1a1a',
-                  letterSpacing: '-0.01em',
-                }}
-              >
-                {categoriesHeading?.title || 'Our Product Categories'}
-              </Typography>
-              <Typography
-                variant="h6"
-                sx={{
-                  color: '#666666',
-                  maxWidth: 600,
-                  mx: 'auto',
-                  fontSize: { xs: '1rem', md: '1.1rem' },
-                  lineHeight: 1.6,
-                }}
-              >
-                Discover our carefully curated selection of organic wellness products
-              </Typography>
-            </Box>
-          </Fade>
-
-          <Grid container spacing={{ xs: 3, md: 4 }}>
-            {categories.map((category, index) => (
-              <Grid item xs={12} sm={6} md={4} key={category._id}>
-                <CategoryCard
-                  category={category}
-                  onNavigate={(categoryId) => navigate(`/products?category=${categoryId}`)}
-                  delay={index * 150}
-                />
+        {/* ═══ STATS ═══ */}
+        <Box sx={{ borderRadius: '20px', background: 'linear-gradient(135deg,#0d4a1e 0%,#1a6b2e 50%,#2d9e4a 100%)', mb: { xs: 6, md: 10 }, overflow: 'hidden', boxShadow: '0 8px 40px rgba(26,107,46,0.25)', p: { xs: 2, md: 3 } }}>
+          <Grid container spacing={2}>
+            {stats.map((stat, i) => (
+              <Grid item xs={6} md={3} key={stat.label}>
+                <StatCard {...stat} />
               </Grid>
             ))}
           </Grid>
         </Box>
 
-        {/* Enhanced Features Section */}
-        <Paper
-          elevation={0}
-          sx={{
-            py: { xs: 6, md: 10 },
-            px: { xs: 3, md: 6 },
-            background: 'linear-gradient(135deg, #f8fff8 0%, #ffffff 50%, #f0f9ff 100%)',
-            borderRadius: 6,
-            border: '1px solid rgba(46, 125, 50, 0.05)',
-            position: 'relative',
-            overflow: 'hidden',
-            '&::before': {
-              content: '""',
-              position: 'absolute',
-              top: 0,
-              left: 0,
-              right: 0,
-              bottom: 0,
-              background: 'radial-gradient(circle at 80% 20%, rgba(46, 125, 50, 0.03) 0%, transparent 50%)',
-              pointerEvents: 'none',
-            }
-          }}
-        >
-          <Container maxWidth="lg">
-            <Fade in={true} timeout={1000}>
-              <Box sx={{ textAlign: 'center', mb: { xs: 4, md: 6 }, position: 'relative', zIndex: 1 }}>
-                <Typography
-                  variant="h2"
-                  component="h2"
-                  sx={{
-                    fontSize: { xs: '2rem', sm: '2.5rem', md: '3rem' },
-                    fontWeight: 700,
-                    mb: 2,
-                    color: '#1a1a1a',
-                    letterSpacing: '-0.01em',
-                  }}
-                >
-                  {featuresHeading?.title || 'Why Choose Akshayam Wellness?'}
-                </Typography>
-                <Typography
-                  variant="h6"
-                  sx={{
-                    color: '#666666',
-                    maxWidth: 700,
-                    mx: 'auto',
-                    fontSize: { xs: '1rem', md: '1.1rem' },
-                    lineHeight: 1.6,
-                  }}
-                >
-                  Experience the difference of authentic organic products with our commitment to quality and sustainability
-                </Typography>
-              </Box>
-            </Fade>
+        {/* ═══ CATEGORIES ═══ */}
+        <Box sx={{ mb: { xs: 6, md: 10 } }}>
+          <SectionHeader eyebrow="Our Collections" title="Product Categories" subtitle="Explore our carefully curated selection of organic wellness products" />
+          <Grid container spacing={{ xs: 2.5, md: 3.5 }}>
+            {categories.map((category, index) => (
+              <Grid item xs={12} sm={6} md={4} key={category._id}>
+                <CategoryCard category={category} onNavigate={id => navigate(`/products?category=${id}`)} index={index} />
+              </Grid>
+            ))}
+          </Grid>
+          {categories.length > 0 && (
+            <Box sx={{ textAlign: 'center', mt: { xs: 4, md: 5 } }}>
+              <Button variant="outlined" size="large" onClick={() => navigate('/products')} endIcon={<ArrowForward />}
+                sx={{ borderColor: '#1a6b2e', color: '#1a6b2e', fontWeight: 700, px: 4, py: 1.5, borderRadius: '12px', textTransform: 'none', fontSize: '0.95rem', borderWidth: '2px', '&:hover': { borderWidth: '2px', background: 'rgba(26,107,46,0.06)', transform: 'translateY(-2px)', boxShadow: '0 6px 20px rgba(26,107,46,0.15)' } }}>
+                View All Products
+              </Button>
+            </Box>
+          )}
+        </Box>
 
-            <Grid container spacing={{ xs: 4, md: 5 }} sx={{ position: 'relative', zIndex: 1 }}>
-              {defaultFeatures.map((feature, index) => (
-                <Grid item xs={12} md={4} key={index}>
-                  <FeatureCard
-                    icon={feature.icon}
-                    title={feature.title}
-                    description={feature.description}
-                    delay={index * 200}
-                  />
-                </Grid>
-              ))}
-            </Grid>
-          </Container>
-        </Paper>
+        {/* ═══ WHY CHOOSE US ═══ */}
+        <Box sx={{ borderRadius: '28px', background: 'linear-gradient(135deg,#f0faf2 0%,#ffffff 50%,#f0f8ff 100%)', border: '1px solid rgba(26,107,46,0.06)', py: { xs: 5, md: 8 }, px: { xs: 3, md: 6 }, mb: { xs: 6, md: 10 } }}>
+          <SectionHeader eyebrow="Why Choose Us" title="The Akshayam Difference" subtitle="Experience the difference of authentic organic products with our unwavering commitment to quality" icon={<CheckCircle sx={{ fontSize: '0.85rem', color: '#1a6b2e' }} />} />
+          <Grid container spacing={{ xs: 2.5, md: 3.5 }}>
+            {features.map((feature, index) => (
+              <Grid item xs={12} md={4} key={index}>
+                <FeatureCard icon={feature.icon} title={feature.title} description={feature.description} gradient={feature.gradient} delay={index * 150} />
+              </Grid>
+            ))}
+          </Grid>
+        </Box>
+
+        {/* ═══ CTA ═══ */}
+        <Box sx={{ borderRadius: '28px', background: 'linear-gradient(135deg,#0d4a1e 0%,#1a6b2e 50%,#2d9e4a 100%)', py: { xs: 5, md: 7 }, px: { xs: 3, md: 6 }, textAlign: 'center', position: 'relative', overflow: 'hidden', boxShadow: '0 12px 50px rgba(26,107,46,0.3)', '&::before': { content: '""', position: 'absolute', top: -80, right: -80, width: 280, height: 280, borderRadius: '50%', background: 'rgba(255,255,255,0.04)', pointerEvents: 'none' } }}>
+          <Typography sx={{ fontFamily: '"Playfair Display",Georgia,serif', fontWeight: 700, fontSize: { xs: '1.7rem', md: '2.4rem' }, color: 'white', mb: 1.5, lineHeight: 1.2, position: 'relative', zIndex: 1 }}>
+            Ready to Start Your Wellness Journey?
+          </Typography>
+          <Typography sx={{ color: 'rgba(255,255,255,0.8)', fontSize: { xs: '0.95rem', md: '1.05rem' }, mb: { xs: 3.5, md: 4 }, maxWidth: 500, mx: 'auto', lineHeight: 1.7, position: 'relative', zIndex: 1 }}>
+            Browse our full collection of organic products and experience the purity of nature.
+          </Typography>
+          <Box sx={{ display: 'flex', gap: 2, justifyContent: 'center', flexDirection: { xs: 'column', sm: 'row' }, alignItems: 'center', position: 'relative', zIndex: 1 }}>
+            <Button variant="contained" size="large" onClick={() => navigate('/products')} endIcon={<ArrowForward />}
+              sx={{ background: 'linear-gradient(135deg,#f0a500,#ffc53d)', color: '#0d4a1e', fontWeight: 800, px: { xs: 4, md: 5 }, py: 1.7, borderRadius: '14px', textTransform: 'none', fontSize: '1rem', boxShadow: '0 8px 28px rgba(240,165,0,0.4)', minWidth: { xs: '200px', sm: 'auto' }, '&:hover': { background: 'linear-gradient(135deg,#ffc53d,#f0a500)', transform: 'translateY(-3px)', boxShadow: '0 12px 36px rgba(240,165,0,0.5)' } }}>
+              Explore Products
+            </Button>
+            <Button variant="outlined" size="large" onClick={() => navigate('/recipes')}
+              sx={{ color: 'white', borderColor: 'rgba(255,255,255,0.4)', fontWeight: 600, px: { xs: 4, md: 5 }, py: 1.7, borderRadius: '14px', textTransform: 'none', fontSize: '1rem', background: 'rgba(255,255,255,0.08)', minWidth: { xs: '200px', sm: 'auto' }, '&:hover': { borderColor: 'rgba(255,255,255,0.7)', background: 'rgba(255,255,255,0.15)', transform: 'translateY(-2px)' } }}>
+              Healthy Recipes
+            </Button>
+          </Box>
+        </Box>
       </Container>
     </Box>
   );

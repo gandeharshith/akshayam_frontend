@@ -1,40 +1,21 @@
-import React, { useState, useEffect } from 'react';
-import {
-  Box,
-  Container,
-  Typography,
-  Grid,
-  Link,
-  IconButton,
-  Paper,
-  Chip,
-  useTheme,
-  useMediaQuery,
-  Fade,
-  Slide
-} from '@mui/material';
-import {
-  Email,
-  Phone,
-  LocationOn,
-  Instagram,
-  WhatsApp,
-  LocalFlorist,
-  ArrowUpward,
-  Favorite,
-  Copyright,
-  Schedule,
-  Security,
-  Park
-} from '@mui/icons-material';
+import React, { useEffect, useState } from 'react';
+import { Box, Container, Typography, Grid, Link, Divider, IconButton, Slide } from '@mui/material';
 import { Link as RouterLink } from 'react-router-dom';
+import { EmojiNature, Phone, Email, LocationOn, Instagram, WhatsApp, ArrowUpward } from '@mui/icons-material';
 import { contactAPI } from '../services/api';
 
+interface ContactInfo {
+  company_name: string;
+  company_description: string;
+  email: string;
+  phone: string;
+  address: string;
+}
+
 const Footer: React.FC = () => {
-  const [contactInfo, setContactInfo] = useState<any>(null);
+  const year = new Date().getFullYear();
+  const [contactInfo, setContactInfo] = useState<ContactInfo | null>(null);
   const [showScrollToTop, setShowScrollToTop] = useState(false);
-  const theme = useTheme();
-  const isMobile = useMediaQuery(theme.breakpoints.down('md'));
 
   useEffect(() => {
     const fetchContactInfo = async () => {
@@ -45,43 +26,40 @@ const Footer: React.FC = () => {
         console.error('Failed to load contact info:', err);
       }
     };
-    
     fetchContactInfo();
 
-    // Scroll to top button visibility
-    const handleScroll = () => {
-      setShowScrollToTop(window.scrollY > 300);
-    };
-
+    const handleScroll = () => setShowScrollToTop(window.scrollY > 300);
     window.addEventListener('scroll', handleScroll);
     return () => window.removeEventListener('scroll', handleScroll);
   }, []);
 
-  const scrollToTop = () => {
-    window.scrollTo({
-      top: 0,
-      behavior: 'smooth'
-    });
-  };
+  const scrollToTop = () => window.scrollTo({ top: 0, behavior: 'smooth' });
 
-  const quickLinks = [
-    { text: 'Home', path: '/', icon: '🏠' },
-    { text: 'About Us', path: '/about', icon: '📖' },
-    { text: 'Products', path: '/products', icon: '🛒' },
-    { text: 'Healthy Recipes', path: '/recipes', icon: '🥗' },
-    { text: 'My Orders', path: '/my-orders', icon: '📦' }
+  const navLinks = [
+    { label: 'Home', to: '/' },
+    { label: 'Products', to: '/products' },
+    { label: 'Recipes', to: '/recipes' },
+    { label: 'About Us', to: '/about' },
+    { label: 'My Orders', to: '/my-orders' },
+  ];
+
+  const policies = [
+    { label: 'Privacy Policy', to: '#' },
+    { label: 'Terms of Service', to: '#' },
+    { label: 'Refund Policy', to: '#' },
+    { label: 'Shipping Policy', to: '#' },
   ];
 
   const socialLinks = [
-    { icon: <Instagram />, url: 'https://www.instagram.com/akshayamwellness?utm_source=qr&igsh=MXUyb25mZTQ2bWt5Yw==', label: 'Instagram', color: '#E4405F' },
-    { icon: <WhatsApp />, url: 'https://api.whatsapp.com/send/?phone=919391136761&text&type=phone_number&app_absent=0&wame_ctl=1', label: 'WhatsApp', color: '#25D366' }
+    { icon: <Instagram sx={{ fontSize: '1.1rem' }} />, href: 'https://www.instagram.com/akshayamwellness?utm_source=qr&igsh=MXUyb25mZTQ2bWt5Yw==', color: '#e1306c', label: 'Instagram' },
+    { icon: <WhatsApp sx={{ fontSize: '1.1rem' }} />, href: 'https://api.whatsapp.com/send/?phone=919391136761&text&type=phone_number&app_absent=0&wame_ctl=1', color: '#25d366', label: 'WhatsApp' },
   ];
 
-  const features = [
-    { icon: <Park />, text: '100% Organic' },
-    { icon: <Security />, text: 'Secure Shopping' },
-    { icon: <Schedule />, text: 'Weekly Delivery' }
-  ];
+  const contactItems = contactInfo ? [
+    contactInfo.email ? { icon: <Email sx={{ fontSize: '0.9rem' }} />, text: contactInfo.email, href: `mailto:${contactInfo.email}` } : null,
+    contactInfo.phone ? { icon: <Phone sx={{ fontSize: '0.9rem' }} />, text: contactInfo.phone, href: `tel:${contactInfo.phone}` } : null,
+    contactInfo.address ? { icon: <LocationOn sx={{ fontSize: '0.9rem' }} />, text: contactInfo.address, href: null } : null,
+  ].filter(Boolean) as { icon: React.ReactNode; text: string; href: string | null }[] : [];
 
   return (
     <>
@@ -94,436 +72,149 @@ const Footer: React.FC = () => {
             bottom: { xs: 20, md: 32 },
             right: { xs: 16, md: 32 },
             zIndex: 1000,
-            backgroundColor: '#2e7d32',
+            background: 'linear-gradient(135deg,#1a6b2e,#2d9e4a)',
             color: 'white',
-            boxShadow: '0 4px 20px rgba(46, 125, 50, 0.3)',
+            boxShadow: '0 4px 20px rgba(26,107,46,0.4)',
+            width: { xs: 44, md: 52 },
+            height: { xs: 44, md: 52 },
             '&:hover': {
-              backgroundColor: '#1b5e20',
-              transform: 'translateY(-2px)',
-              boxShadow: '0 8px 30px rgba(46, 125, 50, 0.4)',
+              background: 'linear-gradient(135deg,#0d4a1e,#1a6b2e)',
+              transform: 'translateY(-3px)',
+              boxShadow: '0 8px 28px rgba(26,107,46,0.5)',
             },
-            transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
-            width: { xs: 48, md: 56 },
-            height: { xs: 48, md: 56 },
+            transition: 'all 0.3s cubic-bezier(0.4,0,0.2,1)',
           }}
         >
-          <ArrowUpward sx={{ fontSize: { xs: '1.2rem', md: '1.5rem' } }} />
+          <ArrowUpward sx={{ fontSize: { xs: '1.1rem', md: '1.3rem' } }} />
         </IconButton>
       </Slide>
 
-      {/* Enhanced Footer */}
       <Box
         component="footer"
         sx={{
+          background: 'linear-gradient(180deg,#0a3318 0%,#0f4c25 100%)',
+          color: 'white',
+          pt: { xs: 5, md: 7 },
+          pb: { xs: 3, md: 4 },
           position: 'relative',
           overflow: 'hidden',
           '&::before': {
             content: '""',
             position: 'absolute',
-            top: 0,
-            left: 0,
-            right: 0,
-            bottom: 0,
-            background: 'linear-gradient(135deg, #1b5e20 0%, #2e7d32 30%, #388e3c 70%, #4caf50 100%)',
-            zIndex: 0,
+            top: 0, left: 0, right: 0,
+            height: 1,
+            background: 'linear-gradient(90deg,transparent,rgba(255,255,255,0.15),transparent)',
           },
-          '&::after': {
-            content: '""',
-            position: 'absolute',
-            top: 0,
-            left: 0,
-            right: 0,
-            bottom: 0,
-            background: 'radial-gradient(circle at 20% 80%, rgba(255,255,255,0.05) 0%, transparent 50%), radial-gradient(circle at 80% 20%, rgba(255,255,255,0.03) 0%, transparent 50%)',
-            zIndex: 1,
-          }
         }}
       >
-        <Box sx={{ position: 'relative', zIndex: 2 }}>
-          {/* Top Section with Brand and Features */}
-          <Box sx={{ py: { xs: 2.5, md: 6 }, borderBottom: '1px solid rgba(255,255,255,0.1)' }}>
-            <Container maxWidth="xl">
-              <Fade in={true} timeout={1000}>
-                <Box sx={{ textAlign: 'center', mb: { xs: 2, md: 4 } }}>
-                  <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', mb: { xs: 1.5, md: 2 } }}>
-                    <LocalFlorist 
-                      sx={{ 
-                        mr: { xs: 1, md: 1.5 }, 
-                        fontSize: { xs: 24, md: 32 },
-                        color: 'rgba(255,255,255,0.9)',
-                        filter: 'drop-shadow(0 2px 4px rgba(0,0,0,0.2))'
-                      }} 
-                    />
-                    <Typography
-                      variant="h4"
-                      sx={{
-                        fontWeight: 700,
-                        color: 'white',
-                        fontSize: { xs: '1.25rem', sm: '1.5rem', md: '2rem' },
-                        letterSpacing: '-0.02em',
-                        textShadow: '0 2px 4px rgba(0,0,0,0.2)',
-                      }}
-                    >
-                      {contactInfo?.company_name || 'Akshayam Wellness'}
-                    </Typography>
-                  </Box>
+        {/* Decorative circles */}
+        <Box sx={{ position: 'absolute', bottom: -80, right: -80, width: 240, height: 240, borderRadius: '50%', background: 'rgba(255,255,255,0.03)', pointerEvents: 'none' }} />
+        <Box sx={{ position: 'absolute', top: -40, left: -40, width: 160, height: 160, borderRadius: '50%', background: 'rgba(255,255,255,0.02)', pointerEvents: 'none' }} />
 
-                  {/* Feature Chips */}
-                  <Box sx={{ display: 'flex', gap: { xs: 0.5, md: 1 }, justifyContent: 'center', flexWrap: 'wrap', mb: { xs: 2, md: 3 } }}>
-                    {features.map((feature, index) => (
-                      <Fade in={true} timeout={1200 + index * 200} key={index}>
-                        <Chip
-                          icon={feature.icon}
-                          label={feature.text}
-                          size={isMobile ? 'small' : 'medium'}
-                          sx={{
-                            backgroundColor: 'rgba(255,255,255,0.15)',
-                            color: 'white',
-                            fontWeight: 600,
-                            fontSize: { xs: '0.75rem', md: '0.875rem' },
-                            backdropFilter: 'blur(10px)',
-                            border: '1px solid rgba(255,255,255,0.2)',
-                            '&:hover': {
-                              backgroundColor: 'rgba(255,255,255,0.25)',
-                            }
-                          }}
-                        />
-                      </Fade>
-                    ))}
-                  </Box>
+        <Container maxWidth="lg" sx={{ px: { xs: 2, md: 3 }, position: 'relative', zIndex: 1 }}>
+          <Grid container spacing={{ xs: 4, md: 5 }}>
+            {/* Brand */}
+            <Grid item xs={12} md={4}>
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, mb: 2 }}>
+                <Box sx={{ width: 40, height: 40, borderRadius: '12px', background: 'linear-gradient(135deg,#22c55e,#16a34a)', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 4px 12px rgba(34,197,94,0.3)' }}>
+                  <EmojiNature sx={{ color: 'white', fontSize: '1.2rem' }} />
+                </Box>
+                <Box>
+                  <Typography sx={{ fontWeight: 800, fontSize: '1.1rem', color: 'white', letterSpacing: '-0.01em', lineHeight: 1.1 }}>
+                    {contactInfo?.company_name || 'Akshayam'}
+                  </Typography>
+                  <Typography sx={{ fontSize: '0.65rem', color: 'rgba(255,255,255,0.5)', fontWeight: 600, letterSpacing: '0.1em', textTransform: 'uppercase' }}>Wellness</Typography>
+                </Box>
+              </Box>
+              <Typography sx={{ fontSize: '0.875rem', color: 'rgba(255,255,255,0.65)', lineHeight: 1.8, mb: 3, maxWidth: 300 }}>
+                {contactInfo?.company_description || 'Bringing nature\'s finest organic and natural wellness products to your doorstep. Pure, authentic, and sustainably sourced.'}
+              </Typography>
+              {/* Social */}
+              <Box sx={{ display: 'flex', gap: 1 }}>
+                {socialLinks.map((s, i) => (
+                  <IconButton key={i} component="a" href={s.href} target="_blank" rel="noopener noreferrer" aria-label={s.label} size="small"
+                    sx={{ width: 40, height: 40, borderRadius: '10px', background: 'rgba(255,255,255,0.08)', color: 'rgba(255,255,255,0.7)', border: '1px solid rgba(255,255,255,0.1)', transition: 'all 0.25s ease', '&:hover': { background: s.color, color: 'white', border: `1px solid ${s.color}`, transform: 'translateY(-2px)', boxShadow: `0 4px 12px ${s.color}50` } }}>
+                    {s.icon}
+                  </IconButton>
+                ))}
+              </Box>
+            </Grid>
 
-                  <Typography
-                    variant="body1"
-                    sx={{
-                      color: 'rgba(255,255,255,0.9)',
-                      maxWidth: { xs: '100%', md: 600 },
-                      mx: 'auto',
-                      fontSize: { xs: '0.85rem', md: '1rem' },
-                      lineHeight: 1.6,
-                      px: { xs: 1, md: 2 },
-                    }}
-                  >
-                    {contactInfo?.company_description || 'Your trusted partner in organic wellness products. We provide high-quality, natural products to enhance your healthy lifestyle.'}
+            {/* Quick Links */}
+            <Grid item xs={6} md={2.5}>
+              <Typography sx={{ fontWeight: 700, fontSize: '0.8rem', color: 'rgba(255,255,255,0.5)', letterSpacing: '0.1em', textTransform: 'uppercase', mb: 2 }}>
+                Quick Links
+              </Typography>
+              <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.25 }}>
+                {navLinks.map(link => (
+                  <Link key={link.to} component={RouterLink} to={link.to}
+                    sx={{ fontSize: '0.875rem', color: 'rgba(255,255,255,0.7)', textDecoration: 'none', fontWeight: 500, transition: 'all 0.2s ease', display: 'inline-flex', alignItems: 'center', gap: 0.5, '&:hover': { color: '#4ade80', transform: 'translateX(4px)' } }}>
+                    {link.label}
+                  </Link>
+                ))}
+              </Box>
+            </Grid>
+
+            {/* Policies */}
+            <Grid item xs={6} md={2.5}>
+              <Typography sx={{ fontWeight: 700, fontSize: '0.8rem', color: 'rgba(255,255,255,0.5)', letterSpacing: '0.1em', textTransform: 'uppercase', mb: 2 }}>
+                Policies
+              </Typography>
+              <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.25 }}>
+                {policies.map(p => (
+                  <Link key={p.label} href={p.to}
+                    sx={{ fontSize: '0.875rem', color: 'rgba(255,255,255,0.7)', textDecoration: 'none', fontWeight: 500, transition: 'all 0.2s ease', '&:hover': { color: '#4ade80', transform: 'translateX(4px)', display: 'inline-block' } }}>
+                    {p.label}
+                  </Link>
+                ))}
+              </Box>
+            </Grid>
+
+            {/* Contact — from API data */}
+            {contactInfo && contactItems.length > 0 && (
+              <Grid item xs={12} md={3}>
+                <Typography sx={{ fontWeight: 700, fontSize: '0.8rem', color: 'rgba(255,255,255,0.5)', letterSpacing: '0.1em', textTransform: 'uppercase', mb: 2 }}>
+                  Contact Us
+                </Typography>
+                <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+                  {contactItems.map((c, i) => (
+                    <Box key={i}
+                      component={c.href ? 'a' : 'div'}
+                      href={c.href || undefined}
+                      sx={{ display: 'flex', alignItems: 'flex-start', gap: 1.5, textDecoration: 'none', transition: 'all 0.2s ease', '&:hover .contact-icon': { background: '#22c55e', color: 'white' }, '&:hover .contact-text': { color: '#4ade80' } }}>
+                      <Box className="contact-icon" sx={{ width: 32, height: 32, borderRadius: '9px', background: 'rgba(255,255,255,0.08)', border: '1px solid rgba(255,255,255,0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'rgba(255,255,255,0.6)', flexShrink: 0, transition: 'all 0.2s ease' }}>
+                        {c.icon}
+                      </Box>
+                      <Typography className="contact-text" sx={{ fontSize: '0.85rem', color: 'rgba(255,255,255,0.7)', fontWeight: 500, lineHeight: 1.4, transition: 'color 0.2s ease', pt: 0.5 }}>
+                        {c.text}
+                      </Typography>
+                    </Box>
+                  ))}
+                </Box>
+
+                {/* Delivery note */}
+                <Box sx={{ mt: 3, p: 2, borderRadius: '12px', background: 'rgba(34,197,94,0.1)', border: '1px solid rgba(34,197,94,0.2)' }}>
+                  <Typography sx={{ fontSize: '0.75rem', color: 'rgba(255,255,255,0.8)', lineHeight: 1.6, fontWeight: 500 }}>
+                    🚚 <strong style={{ color: '#4ade80' }}>Sunday Delivery</strong><br />
+                    Orders placed before Wednesday 6 PM will be delivered on Sunday
                   </Typography>
                 </Box>
-              </Fade>
-            </Container>
-          </Box>
-
-          {/* Main Footer Content */}
-          <Box sx={{ py: { xs: 2.5, md: 6 } }}>
-            <Container maxWidth="xl">
-              <Grid container spacing={{ xs: 2.5, md: 5 }}>
-                {/* Quick Links */}
-                <Grid item xs={12} sm={6} md={3}>
-                  <Fade in={true} timeout={800}>
-                    <Box>
-                      <Typography 
-                        variant="h6" 
-                        gutterBottom
-                        sx={{
-                          color: 'white',
-                          fontWeight: 700,
-                          fontSize: { xs: '1rem', md: '1.25rem' },
-                          mb: { xs: 1.5, md: 2.5 },
-                          position: 'relative',
-                          '&::after': {
-                            content: '""',
-                            position: 'absolute',
-                            bottom: { xs: -4, md: -8 },
-                            left: 0,
-                            width: { xs: 30, md: 40 },
-                            height: 2,
-                            backgroundColor: '#66bb6a',
-                            borderRadius: 1,
-                          }
-                        }}
-                      >
-                        Quick Links
-                      </Typography>
-                      <Box sx={{ display: 'flex', flexDirection: 'column', gap: { xs: 1, md: 1.5 } }}>
-                        {quickLinks.map((link, index) => (
-                          <Fade in={true} timeout={1000 + index * 100} key={link.path}>
-                            <Link 
-                              component={RouterLink}
-                              to={link.path}
-                              sx={{
-                                color: 'rgba(255,255,255,0.8)',
-                                textDecoration: 'none',
-                                display: 'flex',
-                                alignItems: 'center',
-                                gap: { xs: 0.75, md: 1 },
-                                py: { xs: 0.4, md: 0.5 },
-                                px: { xs: 0.75, md: 1 },
-                                borderRadius: 2,
-                                fontSize: { xs: '0.85rem', md: '0.95rem' },
-                                transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
-                                '&:hover': {
-                                  color: 'white',
-                                  backgroundColor: 'rgba(255,255,255,0.1)',
-                                  transform: { xs: 'translateX(4px)', md: 'translateX(8px)' },
-                                  backdropFilter: 'blur(10px)',
-                                }
-                              }}
-                            >
-                              <span style={{ fontSize: isMobile ? '1rem' : '1.1rem' }}>{link.icon}</span>
-                              {link.text}
-                            </Link>
-                          </Fade>
-                        ))}
-                      </Box>
-                    </Box>
-                  </Fade>
-                </Grid>
-
-                {/* Contact Information */}
-                <Grid item xs={12} sm={6} md={4}>
-                  <Fade in={true} timeout={1000}>
-                    <Box>
-                      <Typography 
-                        variant="h6" 
-                        gutterBottom
-                        sx={{
-                          color: 'white',
-                          fontWeight: 700,
-                          fontSize: { xs: '1rem', md: '1.25rem' },
-                          mb: { xs: 1.5, md: 2.5 },
-                          position: 'relative',
-                          '&::after': {
-                            content: '""',
-                            position: 'absolute',
-                            bottom: { xs: -4, md: -8 },
-                            left: 0,
-                            width: { xs: 30, md: 40 },
-                            height: 2,
-                            backgroundColor: '#66bb6a',
-                            borderRadius: 1,
-                          }
-                        }}
-                      >
-                        Get In Touch
-                      </Typography>
-                      <Box sx={{ display: 'flex', flexDirection: 'column', gap: { xs: 1.5, md: 2 } }}>
-                        {[
-                          { 
-                            icon: <Email />, 
-                            text: contactInfo?.email || 'info@akshayamwellness.com',
-                            href: `mailto:${contactInfo?.email || 'info@akshayamwellness.com'}`
-                          },
-                          { 
-                            icon: <Phone />, 
-                            text: contactInfo?.phone || '+91-9876543210',
-                            href: `tel:${contactInfo?.phone || '+919876543210'}`
-                          },
-                          { 
-                            icon: <LocationOn />, 
-                            text: contactInfo?.address || '123 Wellness Street, Organic City',
-                            href: null
-                          }
-                        ].map((contact, index) => (
-                          <Fade in={true} timeout={1200 + index * 150} key={index}>
-                            <Box
-                              component={contact.href ? 'a' : 'div'}
-                              href={contact.href || undefined}
-                              sx={{
-                                display: 'flex',
-                                alignItems: 'flex-start',
-                                gap: { xs: 1, md: 1.5 },
-                                color: 'rgba(255,255,255,0.8)',
-                                textDecoration: 'none',
-                                p: { xs: 0.75, md: 1 },
-                                borderRadius: 2,
-                                transition: 'all 0.3s ease',
-                                '&:hover': contact.href ? {
-                                  color: 'white',
-                                  backgroundColor: 'rgba(255,255,255,0.1)',
-                                  backdropFilter: 'blur(10px)',
-                                  transform: { xs: 'translateY(-1px)', md: 'translateY(-2px)' },
-                                } : {}
-                              }}
-                            >
-                              <Box
-                                sx={{
-                                  p: { xs: 0.75, md: 1 },
-                                  borderRadius: '50%',
-                                  backgroundColor: 'rgba(255,255,255,0.15)',
-                                  display: 'flex',
-                                  alignItems: 'center',
-                                  justifyContent: 'center',
-                                  minWidth: { xs: 32, md: 40 },
-                                  height: { xs: 32, md: 40 },
-                                }}
-                              >
-                                <Box sx={{ fontSize: { xs: '1rem', md: '1.25rem' } }}>
-                                  {contact.icon}
-                                </Box>
-                              </Box>
-                              <Typography 
-                                variant="body2" 
-                                sx={{ 
-                                  fontSize: { xs: '0.8rem', md: '0.9rem' },
-                                  lineHeight: 1.5,
-                                  mt: { xs: 0.25, md: 0.5 }
-                                }}
-                              >
-                                {contact.text}
-                              </Typography>
-                            </Box>
-                          </Fade>
-                        ))}
-                      </Box>
-                    </Box>
-                  </Fade>
-                </Grid>
-
-                {/* Social Media & Newsletter */}
-                <Grid item xs={12} md={5}>
-                  <Fade in={true} timeout={1200}>
-                    <Box>
-                      <Typography 
-                        variant="h6" 
-                        gutterBottom
-                        sx={{
-                          color: 'white',
-                          fontWeight: 700,
-                          fontSize: { xs: '1rem', md: '1.25rem' },
-                          mb: { xs: 1.5, md: 2.5 },
-                          position: 'relative',
-                          '&::after': {
-                            content: '""',
-                            position: 'absolute',
-                            bottom: { xs: -4, md: -8 },
-                            left: 0,
-                            width: { xs: 30, md: 40 },
-                            height: 2,
-                            backgroundColor: '#66bb6a',
-                            borderRadius: 1,
-                          }
-                        }}
-                      >
-                        Follow Us
-                      </Typography>
-
-                      {/* Social Media Links */}
-                      <Box sx={{ mb: { xs: 2, md: 3 } }}>
-                        <Typography 
-                          variant="body2" 
-                          sx={{ 
-                            color: 'rgba(255,255,255,0.8)', 
-                            mb: { xs: 1.5, md: 2 },
-                            fontSize: { xs: '0.8rem', md: '0.9rem' }
-                          }}
-                        >
-                          Stay connected for the latest updates and wellness tips
-                        </Typography>
-                        <Box sx={{ display: 'flex', gap: { xs: 1.5, md: 2 }, flexWrap: 'wrap' }}>
-                          {socialLinks.map((social, index) => (
-                            <Fade in={true} timeout={1400 + index * 100} key={social.label}>
-                              <IconButton
-                                component="a"
-                                href={social.url}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                aria-label={social.label}
-                                sx={{
-                                  color: 'white',
-                                  backgroundColor: 'rgba(255,255,255,0.1)',
-                                  backdropFilter: 'blur(10px)',
-                                  border: '1px solid rgba(255,255,255,0.2)',
-                                  width: { xs: 44, md: 48 },
-                                  height: { xs: 44, md: 48 },
-                                  transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
-                                  '&:hover': {
-                                    backgroundColor: social.color,
-                                    transform: { xs: 'translateY(-2px) scale(1.03)', md: 'translateY(-3px) scale(1.05)' },
-                                    boxShadow: `0 ${isMobile ? '6px' : '8px'} 25px ${social.color}40`,
-                                  }
-                                }}
-                              >
-                                <Box sx={{ fontSize: { xs: '1.2rem', md: '1.5rem' } }}>
-                                  {social.icon}
-                                </Box>
-                              </IconButton>
-                            </Fade>
-                          ))}
-                        </Box>
-                      </Box>
-
-                      {/* Delivery Info Card */}
-                      <Paper
-                        elevation={0}
-                        sx={{
-                          p: { xs: 2, md: 3 },
-                          backgroundColor: 'rgba(255,255,255,0.1)',
-                          backdropFilter: 'blur(10px)',
-                          border: '1px solid rgba(255,255,255,0.2)',
-                          borderRadius: { xs: 2, md: 3 },
-                          color: 'white',
-                        }}
-                      >
-                        <Box sx={{ display: 'flex', alignItems: 'center', mb: { xs: 1, md: 1.5 } }}>
-                          <Schedule sx={{ mr: 1, color: '#66bb6a', fontSize: { xs: '1.2rem', md: '1.5rem' } }} />
-                          <Typography variant="subtitle1" sx={{ fontWeight: 600, fontSize: { xs: '0.9rem', md: '1rem' } }}>
-                            Delivery Schedule
-                          </Typography>
-                        </Box>
-                        <Typography variant="body2" sx={{ fontSize: { xs: '0.75rem', md: '0.85rem' }, lineHeight: 1.5, opacity: 0.9 }}>
-                          Orders should be placed before every Wednesday 6 PM and the shipment will be delivered on Sunday
-                        </Typography>
-                      </Paper>
-                    </Box>
-                  </Fade>
-                </Grid>
               </Grid>
-            </Container>
-          </Box>
+            )}
+          </Grid>
 
-          {/* Bottom Footer */}
-          <Box sx={{ borderTop: '1px solid rgba(255,255,255,0.1)', py: { xs: 2, md: 3 } }}>
-            <Container maxWidth="xl">
-              <Fade in={true} timeout={1600}>
-                <Box sx={{ 
-                  display: 'flex', 
-                  flexDirection: { xs: 'column', md: 'row' },
-                  justifyContent: 'space-between',
-                  alignItems: 'center',
-                  gap: { xs: 1.5, md: 2 },
-                  textAlign: { xs: 'center', md: 'left' }
-                }}>
-                  <Typography 
-                    variant="body2" 
-                    sx={{ 
-                      color: 'rgba(255,255,255,0.7)',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: { xs: 'center', md: 'flex-start' },
-                      gap: 0.5,
-                      fontSize: { xs: '0.75rem', md: '0.85rem' },
-                      flexWrap: 'wrap'
-                    }}
-                  >
-                    <Copyright sx={{ fontSize: { xs: '0.9rem', md: '1rem' } }} />
-                    {new Date().getFullYear()} {contactInfo?.company_name || 'Akshayam Wellness'}. All rights reserved.
-                  </Typography>
-                  
-                  <Typography 
-                    variant="body2" 
-                    sx={{ 
-                      color: 'rgba(255,255,255,0.6)',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: { xs: 'center', md: 'flex-start' },
-                      gap: 0.5,
-                      fontSize: { xs: '0.7rem', md: '0.8rem' }
-                    }}
-                  >
-                    Made with <Favorite sx={{ color: '#ff4444', fontSize: { xs: '0.9rem', md: '1rem' } }} /> for your wellness
-                  </Typography>
-                </Box>
-              </Fade>
-            </Container>
+          <Divider sx={{ my: { xs: 3, md: 4 }, borderColor: 'rgba(255,255,255,0.08)' }} />
+
+          {/* Bottom bar */}
+          <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 1.5 }}>
+            <Typography sx={{ fontSize: '0.8rem', color: 'rgba(255,255,255,0.45)', fontWeight: 500 }}>
+              © {year} {contactInfo?.company_name || 'Akshayam Wellness'}. All rights reserved.
+            </Typography>
+            <Typography sx={{ fontSize: '0.75rem', color: 'rgba(255,255,255,0.4)', fontWeight: 500 }}>
+              Made with ❤️ for your wellness
+            </Typography>
           </Box>
-        </Box>
+        </Container>
       </Box>
     </>
   );

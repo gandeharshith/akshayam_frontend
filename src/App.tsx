@@ -1,5 +1,5 @@
-import React, { Suspense, lazy } from 'react';
-import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
+import React, { Suspense, lazy, useEffect } from 'react';
+import { BrowserRouter as Router, Routes, Route, useLocation } from 'react-router-dom';
 import { ThemeProvider, createTheme } from '@mui/material/styles';
 import { CssBaseline, Snackbar, Alert, Box, CircularProgress, Typography } from '@mui/material';
 import { CartProvider, useCart } from './contexts/CartContext';
@@ -16,6 +16,15 @@ const Cart = lazy(() => import('./pages/Cart'));
 const MyOrders = lazy(() => import('./pages/MyOrders'));
 const Admin = lazy(() => import('./pages/Admin'));
 const AdminLogin = lazy(() => import('./pages/AdminLogin'));
+
+// Scroll to top on every route change
+const ScrollToTop: React.FC = () => {
+  const { pathname } = useLocation();
+  useEffect(() => {
+    window.scrollTo({ top: 0, behavior: 'instant' as ScrollBehavior });
+  }, [pathname]);
+  return null;
+};
 
 // Loading component
 const PageLoader: React.FC = () => (
@@ -71,6 +80,7 @@ const CartNotification: React.FC = () => {
 const AppContent: React.FC = () => {
   return (
     <Router>
+      <ScrollToTop />
       <div className="App">
         <Navbar />
         <main style={{ minHeight: 'calc(100vh - 140px)' }}>

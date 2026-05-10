@@ -1,27 +1,20 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   AppBar,
   Toolbar,
   Typography,
-  Button,
   Badge,
   IconButton,
   Box,
   Container,
   Drawer,
-  List,
-  ListItem,
-  ListItemButton,
-  ListItemText,
-  ListItemIcon,
   useTheme,
   useMediaQuery,
-  Divider,
   Snackbar,
   Alert,
-  Slide,
-  Fade,
-  Chip
+  Chip,
+  Divider,
+  Avatar
 } from '@mui/material';
 import {
   ShoppingCart,
@@ -33,7 +26,8 @@ import {
   Close as CloseIcon,
   MenuBook as RecipesIcon,
   LocalFlorist,
-  KeyboardArrowRight
+  ArrowForward,
+  Spa
 } from '@mui/icons-material';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { useCart } from '../contexts/CartContext';
@@ -49,468 +43,545 @@ const Navbar: React.FC = () => {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [stockErrors, setStockErrors] = useState<string[]>([]);
   const [showStockAlert, setShowStockAlert] = useState(false);
+  const [scrolled, setScrolled] = useState(false);
 
-  // Check if this is an admin context (admin pages start with /adddmin)
   const isAdminContext = location.pathname.startsWith('/adddmin');
 
+  useEffect(() => {
+    const handleScroll = () => setScrolled(window.scrollY > 10);
+    window.addEventListener('scroll', handleScroll, { passive: true });
+    return () => window.removeEventListener('scroll', handleScroll);
+  }, []);
+
+  // Close drawer on route change
+  useEffect(() => {
+    setMobileMenuOpen(false);
+  }, [location.pathname]);
+
   const menuItems = [
-    { text: 'Home', path: '/', icon: <HomeIcon />, description: 'Welcome page' },
-    { text: 'About', path: '/about', icon: <InfoIcon />, description: 'Our story' },
-    { text: 'Products', path: '/products', icon: <StoreIcon />, description: 'Shop organic' },
-    { text: 'Healthy Recipes', path: '/recipes', icon: <RecipesIcon />, description: 'Nutrition guides' },
-    { text: 'My Orders', path: '/my-orders', icon: <OrdersIcon />, description: 'Order history' }
+    { text: 'Home',            path: '/',          icon: <HomeIcon fontSize="small" />,   emoji: '🏠' },
+    { text: 'About',           path: '/about',     icon: <InfoIcon fontSize="small" />,   emoji: '🌿' },
+    { text: 'Products',        path: '/products',  icon: <StoreIcon fontSize="small" />,  emoji: '🛒' },
+    { text: 'Healthy Recipes', path: '/recipes',   icon: <RecipesIcon fontSize="small" />,emoji: '🥗' },
+    { text: 'My Orders',       path: '/my-orders', icon: <OrdersIcon fontSize="small" />, emoji: '📦' },
   ];
 
-  const handleMobileMenuToggle = () => {
-    setMobileMenuOpen(!mobileMenuOpen);
-  };
-
-  const handleMobileNavigation = (path: string) => {
-    navigate(path);
-    setMobileMenuOpen(false);
-  };
-
   const handleCartClick = async () => {
-    if (items.length === 0) {
-      navigate('/cart');
-      return;
-    }
-
+    if (items.length === 0) { navigate('/cart'); return; }
     try {
-      // Check minimum order value for users (not admin)
       if (!isAdminContext && total < minOrderValue) {
-        setStockErrors([`Minimum order value is ₹${minOrderValue}. Current order total: ₹${total.toFixed(2)}`]);
+        setStockErrors([`Minimum order value is ₹${minOrderValue}. Current: ₹${total.toFixed(2)}`]);
         setShowStockAlert(true);
         navigate('/cart');
         return;
       }
-
       const stockValidationItems: StockValidationItem[] = items.map(item => ({
         product_id: item.product._id,
         quantity: item.quantity
       }));
-
-      const validationResult = await stockAPI.validateStock({
-        items: stockValidationItems
-      });
-
-      if (!validationResult.valid) {
-        const errorMessages = validationResult.invalid_items.map(item => item.error);
-        setStockErrors(errorMessages);
+      const result = await stockAPI.validateStock({ items: stockValidationItems });
+      if (!result.valid) {
+        setStockErrors(result.invalid_items.map(i => i.error));
         setShowStockAlert(true);
-        navigate('/cart');
-      } else {
-        navigate('/cart');
       }
-    } catch (err) {
-      console.error('Error validating stock:', err);
+      navigate('/cart');
+    } catch {
       navigate('/cart');
     }
   };
 
-  const handleCloseStockAlert = () => {
-    setShowStockAlert(false);
-    setStockErrors([]);
-  };
+  const isActive = (path: string) => location.pathname === path;
 
   return (
     <>
-      {/* Enhanced AppBar with gradient and blur effect */}
-      <AppBar 
-        position="static" 
+      <AppBar
+        position="sticky"
         elevation={0}
-        sx={{ 
-          background: 'linear-gradient(135deg, #2e7d32 0%, #388e3c 50%, #4caf50 100%)',
-          backdropFilter: 'blur(10px)',
-          borderBottom: '1px solid rgba(255,255,255,0.1)',
-          position: 'relative',
-          overflow: 'hidden',
-          '&::before': {
-            content: '""',
-            position: 'absolute',
-            top: 0,
-            left: 0,
-            right: 0,
-            bottom: 0,
-            background: 'linear-gradient(45deg, transparent 30%, rgba(255,255,255,0.05) 50%, transparent 70%)',
-            pointerEvents: 'none',
-          }
+        sx={{
+          background: scrolled
+            ? 'rgba(15, 76, 37, 0.97)'
+            : 'linear-gradient(135deg, #0f4c25 0%, #15803d 50%, #16a34a 100%)',
+          backdropFilter: scrolled ? 'blur(20px)' : 'none',
+          borderBottom: scrolled ? '1px solid rgba(255,255,255,0.08)' : 'none',
+          transition: 'all 0.4s cubic-bezier(0.4, 0, 0.2, 1)',
+          boxShadow: scrolled ? '0 4px 32px rgba(0,0,0,0.2)' : 'none',
+          zIndex: 1200,
         }}
       >
-        <Container maxWidth="xl">
-            <Toolbar sx={{ py: { xs: 1.5, md: 1.5 }, minHeight: { xs: '64px', md: 'auto' } }}>
-            {/* Logo and Brand */}
+        <Container maxWidth="xl" disableGutters sx={{ px: { xs: 2, md: 3 } }}>
+          <Toolbar
+            disableGutters
+            sx={{
+              minHeight: { xs: '64px', md: '72px' },
+              gap: 1,
+            }}
+          >
+            {/* ── Logo ── */}
             <Box
               component={Link}
               to="/"
               sx={{
                 display: 'flex',
                 alignItems: 'center',
+                gap: 1.5,
                 textDecoration: 'none',
-                color: 'inherit',
                 flexGrow: 1,
-                transition: 'transform 0.2s ease-in-out',
-                '&:hover': {
-                  transform: 'scale(1.02)',
-                }
+                transition: 'opacity 0.2s ease',
+                '&:hover': { opacity: 0.9 },
               }}
             >
-              <LocalFlorist 
-                sx={{ 
-                  mr: 1.5, 
-                  fontSize: { xs: 24, md: 28 },
-                  color: 'rgba(255,255,255,0.9)',
-                  filter: 'drop-shadow(0 2px 4px rgba(0,0,0,0.2))'
-                }} 
-              />
+              <Box
+                sx={{
+                  width: { xs: 38, md: 44 },
+                  height: { xs: 38, md: 44 },
+                  borderRadius: '12px',
+                  background: 'rgba(255,255,255,0.15)',
+                  backdropFilter: 'blur(10px)',
+                  border: '1px solid rgba(255,255,255,0.25)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  flexShrink: 0,
+                }}
+              >
+                <Spa sx={{ color: 'white', fontSize: { xs: '1.3rem', md: '1.5rem' } }} />
+              </Box>
               <Box>
                 <Typography
-                  variant="h6"
                   sx={{
-                    fontWeight: 700,
-                    fontSize: { xs: '1.1rem', sm: '1.25rem', md: '1.35rem' },
-                    letterSpacing: '-0.02em',
+                    fontWeight: 800,
+                    fontSize: { xs: '1.05rem', sm: '1.2rem', md: '1.3rem' },
                     color: '#ffffff',
-                    lineHeight: 1.2
+                    lineHeight: 1.1,
+                    letterSpacing: '-0.02em',
+                    fontFamily: "'Inter', sans-serif",
                   }}
                 >
-                  {isMobile ? "Akshayam" : "Akshayam Wellness"}
+                  Akshayam
                 </Typography>
-                {!isMobile && (
-                  <Typography
-                    variant="caption"
-                    sx={{
-                      color: 'rgba(255,255,255,0.7)',
-                      fontSize: '0.75rem',
-                      fontWeight: 400,
-                      letterSpacing: '0.5px'
-                    }}
-                  >
-                    Organic • Natural • Pure
-                  </Typography>
-                )}
+                <Typography
+                  sx={{
+                    fontSize: { xs: '0.65rem', md: '0.72rem' },
+                    color: 'rgba(255,255,255,0.65)',
+                    letterSpacing: '0.12em',
+                    textTransform: 'uppercase',
+                    fontWeight: 500,
+                    lineHeight: 1,
+                  }}
+                >
+                  Wellness
+                </Typography>
               </Box>
             </Box>
-            
-            {/* Desktop Navigation */}
+
+            {/* ── Desktop Nav ── */}
             {!isMobile && (
-              <Box sx={{ display: 'flex', gap: 0.5, alignItems: 'center', mr: 2 }}>
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
                 {menuItems.map((item) => (
-                  <Button
+                  <Box
                     key={item.path}
-                    color="inherit"
                     component={Link}
                     to={item.path}
-                    startIcon={item.icon}
                     sx={{
-                      px: 2.5,
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: 0.75,
+                      px: 2,
                       py: 1,
-                      borderRadius: 3,
-                      fontWeight: 600,
+                      borderRadius: '10px',
+                      textDecoration: 'none',
+                      color: isActive(item.path) ? '#ffffff' : 'rgba(255,255,255,0.75)',
+                      fontWeight: isActive(item.path) ? 700 : 500,
                       fontSize: '0.875rem',
-                      textTransform: 'none',
                       letterSpacing: '0.01em',
-                      position: 'relative',
-                      backgroundColor: location.pathname === item.path ? 'rgba(255,255,255,0.15)' : 'transparent',
-                      backdropFilter: location.pathname === item.path ? 'blur(10px)' : 'none',
-                      border: location.pathname === item.path ? '1px solid rgba(255,255,255,0.2)' : '1px solid transparent',
-                      boxShadow: location.pathname === item.path ? '0 2px 8px rgba(0,0,0,0.1)' : 'none',
-                      transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+                      background: isActive(item.path)
+                        ? 'rgba(255,255,255,0.18)'
+                        : 'transparent',
+                      border: isActive(item.path)
+                        ? '1px solid rgba(255,255,255,0.25)'
+                        : '1px solid transparent',
+                      transition: 'all 0.25s cubic-bezier(0.4, 0, 0.2, 1)',
                       '&:hover': {
-                        backgroundColor: 'rgba(255,255,255,0.12)',
-                        backdropFilter: 'blur(10px)',
+                        color: '#ffffff',
+                        background: 'rgba(255,255,255,0.12)',
                         transform: 'translateY(-1px)',
-                        boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
                       },
-                      '&:active': {
-                        transform: 'translateY(0)',
-                      },
-                      '& .MuiButton-startIcon': {
-                        marginRight: '8px',
-                        fontSize: '1.1rem'
-                      }
                     }}
                   >
+                    {item.icon}
                     {item.text}
-                  </Button>
+                  </Box>
                 ))}
               </Box>
             )}
-            
-            {/* Cart Icon with enhanced styling */}
-            <IconButton
-              color="inherit"
+
+            {/* ── Cart Button ── */}
+            <Box
               onClick={handleCartClick}
-              title="View Cart"
-              sx={{ 
-                ml: isMobile ? 1 : 0,
-                mr: isMobile ? 1 : 0,
-                p: 1.5,
-                borderRadius: 3,
-                backgroundColor: 'rgba(255,255,255,0.1)',
-                backdropFilter: 'blur(10px)',
-                border: '1px solid rgba(255,255,255,0.15)',
-                transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+              sx={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: 1,
+                px: { xs: 1.5, md: 2 },
+                py: { xs: 0.75, md: 1 },
+                borderRadius: '12px',
+                background: itemCount > 0
+                  ? 'rgba(255,255,255,0.2)'
+                  : 'rgba(255,255,255,0.1)',
+                border: '1px solid rgba(255,255,255,0.2)',
+                cursor: 'pointer',
+                transition: 'all 0.25s cubic-bezier(0.4, 0, 0.2, 1)',
+                ml: 1,
                 '&:hover': {
-                  backgroundColor: 'rgba(255,255,255,0.2)',
-                  transform: 'translateY(-2px)',
-                  boxShadow: '0 6px 16px rgba(0,0,0,0.2)',
-                },
-                '&:active': {
+                  background: 'rgba(255,255,255,0.25)',
                   transform: 'translateY(-1px)',
-                }
+                  boxShadow: '0 4px 16px rgba(0,0,0,0.2)',
+                },
+                '&:active': { transform: 'translateY(0)' },
               }}
             >
-              <Badge 
-                badgeContent={itemCount} 
-                color="error"
+              <Badge
+                badgeContent={itemCount}
                 sx={{
                   '& .MuiBadge-badge': {
-                    backgroundColor: '#ff4444',
+                    background: 'linear-gradient(135deg, #f59e0b, #ef4444)',
                     color: 'white',
-                    fontWeight: 700,
-                    fontSize: '0.75rem',
-                    minWidth: '20px',
-                    height: '20px',
-                    borderRadius: '10px',
-                    border: '2px solid white',
-                    boxShadow: '0 2px 4px rgba(0,0,0,0.2)',
-                  }
+                    fontWeight: 800,
+                    fontSize: '0.65rem',
+                    minWidth: '18px',
+                    height: '18px',
+                    border: '2px solid rgba(15,76,37,0.8)',
+                    boxShadow: '0 2px 8px rgba(0,0,0,0.3)',
+                  },
                 }}
               >
-                <ShoppingCart sx={{ fontSize: '1.3rem' }} />
+                <ShoppingCart sx={{ color: 'white', fontSize: { xs: '1.2rem', md: '1.3rem' } }} />
               </Badge>
-            </IconButton>
+              {!isMobile && itemCount > 0 && (
+                <Typography sx={{ color: 'white', fontSize: '0.8rem', fontWeight: 700 }}>
+                  ₹{total.toFixed(0)}
+                </Typography>
+              )}
+            </Box>
 
-            {/* Mobile Menu Button */}
+            {/* ── Mobile Hamburger ── */}
             {isMobile && (
               <IconButton
-                color="inherit"
-                onClick={handleMobileMenuToggle}
-                sx={{ 
-                  p: 1.5,
-                  borderRadius: 3,
-                  backgroundColor: 'rgba(255,255,255,0.1)',
-                  backdropFilter: 'blur(10px)',
-                  border: '1px solid rgba(255,255,255,0.15)',
-                  transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+                onClick={() => setMobileMenuOpen(true)}
+                sx={{
+                  ml: 0.5,
+                  width: 42,
+                  height: 42,
+                  borderRadius: '10px',
+                  background: 'rgba(255,255,255,0.1)',
+                  border: '1px solid rgba(255,255,255,0.2)',
+                  color: 'white',
+                  transition: 'all 0.25s ease',
                   '&:hover': {
-                    backgroundColor: 'rgba(255,255,255,0.2)',
-                    transform: 'rotate(90deg)',
-                  }
+                    background: 'rgba(255,255,255,0.2)',
+                  },
                 }}
               >
-                <MenuIcon sx={{ fontSize: '1.3rem' }} />
+                <MenuIcon fontSize="small" />
               </IconButton>
             )}
           </Toolbar>
         </Container>
       </AppBar>
 
-      {/* Enhanced Mobile Drawer */}
+      {/* ══════════════════════════════════════════
+          PREMIUM MOBILE DRAWER
+      ══════════════════════════════════════════ */}
       <Drawer
         anchor="right"
         open={mobileMenuOpen}
-        onClose={handleMobileMenuToggle}
-        transitionDuration={400}
+        onClose={() => setMobileMenuOpen(false)}
+        transitionDuration={350}
         sx={{
           '& .MuiDrawer-paper': {
-            width: 320,
-            background: 'linear-gradient(135deg, #f8fffe 0%, #ffffff 100%)',
-            boxShadow: '-8px 0 32px rgba(0,0,0,0.1)',
-            borderLeft: '1px solid rgba(46, 125, 50, 0.1)',
-          }
+            width: '85vw',
+            maxWidth: 340,
+            background: '#ffffff',
+            boxShadow: '-8px 0 48px rgba(0,0,0,0.15)',
+            border: 'none',
+            display: 'flex',
+            flexDirection: 'column',
+          },
+          '& .MuiBackdrop-root': {
+            backdropFilter: 'blur(4px)',
+            background: 'rgba(0,0,0,0.4)',
+          },
         }}
       >
-        <Slide direction="left" in={mobileMenuOpen} timeout={400}>
-          <Box>
-            {/* Drawer Header */}
-            <Box sx={{ 
-              p: 3, 
-              display: 'flex', 
-              justifyContent: 'space-between', 
-              alignItems: 'center',
-              background: 'linear-gradient(135deg, #2e7d32 0%, #4caf50 100%)',
-              color: 'white',
-              position: 'relative',
-              '&::after': {
-                content: '""',
-                position: 'absolute',
-                bottom: 0,
-                left: 0,
-                right: 0,
-                height: '1px',
-                background: 'linear-gradient(90deg, transparent, rgba(255,255,255,0.3), transparent)'
-              }
-            }}>
-              <Box sx={{ display: 'flex', alignItems: 'center' }}>
-                <LocalFlorist sx={{ mr: 1, fontSize: 28 }} />
-                <Box>
-                  <Typography variant="h6" sx={{ fontWeight: 700, lineHeight: 1.2 }}>
-                    Menu
-                  </Typography>
-                  <Typography variant="caption" sx={{ opacity: 0.8, fontSize: '0.75rem' }}>
-                    Navigate our store
-                  </Typography>
-                </Box>
-              </Box>
-              <IconButton 
-                onClick={handleMobileMenuToggle}
-                sx={{ 
-                  color: 'white',
-                  backgroundColor: 'rgba(255,255,255,0.1)',
-                  '&:hover': {
-                    backgroundColor: 'rgba(255,255,255,0.2)',
-                    transform: 'rotate(90deg)',
-                  },
-                  transition: 'all 0.3s ease'
+        {/* Drawer Header */}
+        <Box
+          sx={{
+            background: 'linear-gradient(135deg, #0f4c25 0%, #15803d 60%, #16a34a 100%)',
+            px: 3,
+            pt: 3,
+            pb: 4,
+            position: 'relative',
+            overflow: 'hidden',
+            '&::before': {
+              content: '""',
+              position: 'absolute',
+              top: -40,
+              right: -40,
+              width: 120,
+              height: 120,
+              borderRadius: '50%',
+              background: 'rgba(255,255,255,0.06)',
+            },
+            '&::after': {
+              content: '""',
+              position: 'absolute',
+              bottom: -20,
+              left: -20,
+              width: 80,
+              height: 80,
+              borderRadius: '50%',
+              background: 'rgba(255,255,255,0.04)',
+            },
+          }}
+        >
+          <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', position: 'relative', zIndex: 1 }}>
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
+              <Box
+                sx={{
+                  width: 44,
+                  height: 44,
+                  borderRadius: '12px',
+                  background: 'rgba(255,255,255,0.2)',
+                  border: '1px solid rgba(255,255,255,0.3)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
                 }}
               >
-                <CloseIcon />
-              </IconButton>
+                <Spa sx={{ color: 'white', fontSize: '1.4rem' }} />
+              </Box>
+              <Box>
+                <Typography sx={{ fontWeight: 800, color: 'white', fontSize: '1.1rem', lineHeight: 1.1 }}>
+                  Akshayam
+                </Typography>
+                <Typography sx={{ color: 'rgba(255,255,255,0.65)', fontSize: '0.65rem', letterSpacing: '0.12em', textTransform: 'uppercase' }}>
+                  Wellness
+                </Typography>
+              </Box>
             </Box>
-
-            {/* Menu Items */}
-            <List sx={{ px: 1, py: 2 }}>
-              {menuItems.map((item, index) => (
-                <Fade in={mobileMenuOpen} timeout={500 + index * 100} key={item.path}>
-                  <ListItem disablePadding sx={{ mb: 1 }}>
-                    <ListItemButton
-                      onClick={() => handleMobileNavigation(item.path)}
-                      selected={location.pathname === item.path}
-                      sx={{
-                        borderRadius: 3,
-                        px: 2,
-                        py: 1.5,
-                        transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
-                        '&.Mui-selected': {
-                          backgroundColor: 'rgba(46, 125, 50, 0.08)',
-                          borderLeft: '4px solid #2e7d32',
-                          '& .MuiListItemText-primary': {
-                            color: '#2e7d32',
-                            fontWeight: 700,
-                          },
-                          '& .MuiListItemText-secondary': {
-                            color: '#388e3c',
-                          },
-                          '& .MuiListItemIcon-root': {
-                            color: '#2e7d32',
-                          }
-                        },
-                        '&:hover': {
-                          backgroundColor: 'rgba(46, 125, 50, 0.05)',
-                          transform: 'translateX(8px)',
-                          '& .MuiSvgIcon-root:last-child': {
-                            transform: 'translateX(4px)',
-                          }
-                        }
-                      }}
-                    >
-                      <ListItemIcon sx={{ 
-                        minWidth: 48,
-                        color: location.pathname === item.path ? '#2e7d32' : '#666666',
-                        transition: 'color 0.3s ease'
-                      }}>
-                        {item.icon}
-                      </ListItemIcon>
-                      <ListItemText 
-                        primary={item.text}
-                        secondary={item.description}
-                        primaryTypographyProps={{
-                          fontWeight: location.pathname === item.path ? 700 : 500,
-                          fontSize: '1rem',
-                          color: location.pathname === item.path ? '#2e7d32' : '#1a1a1a'
-                        }}
-                        secondaryTypographyProps={{
-                          fontSize: '0.8rem',
-                          color: location.pathname === item.path ? '#388e3c' : '#666666'
-                        }}
-                      />
-                      <KeyboardArrowRight 
-                        sx={{ 
-                          color: '#ccc', 
-                          fontSize: '1.2rem',
-                          transition: 'transform 0.3s ease'
-                        }} 
-                      />
-                    </ListItemButton>
-                  </ListItem>
-                </Fade>
-              ))}
-            </List>
-
-            {/* Cart Status in Mobile Menu */}
-            <Box sx={{ px: 3, pb: 3 }}>
-              <Divider sx={{ mb: 2 }} />
-              <Chip
-                icon={<ShoppingCart />}
-                label={`Cart (${itemCount} items)`}
-                onClick={() => {
-                  handleCartClick();
-                  setMobileMenuOpen(false);
-                }}
-                sx={{
-                  width: '100%',
-                  py: 2,
-                  fontSize: '1rem',
-                  fontWeight: 600,
-                  backgroundColor: itemCount > 0 ? '#2e7d32' : '#e0e0e0',
-                  color: itemCount > 0 ? 'white' : '#666666',
-                  '&:hover': {
-                    backgroundColor: itemCount > 0 ? '#1b5e20' : '#d0d0d0',
-                    transform: 'translateY(-1px)',
-                    boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
-                  },
-                  transition: 'all 0.3s ease'
-                }}
-              />
-            </Box>
+            <IconButton
+              onClick={() => setMobileMenuOpen(false)}
+              sx={{
+                color: 'white',
+                background: 'rgba(255,255,255,0.12)',
+                border: '1px solid rgba(255,255,255,0.2)',
+                width: 36,
+                height: 36,
+                borderRadius: '10px',
+                '&:hover': { background: 'rgba(255,255,255,0.22)' },
+              }}
+            >
+              <CloseIcon fontSize="small" />
+            </IconButton>
           </Box>
-        </Slide>
+
+          {/* Cart summary in header */}
+          {itemCount > 0 && (
+            <Box
+              onClick={() => { handleCartClick(); setMobileMenuOpen(false); }}
+              sx={{
+                mt: 2.5,
+                p: 1.5,
+                borderRadius: '12px',
+                background: 'rgba(255,255,255,0.12)',
+                border: '1px solid rgba(255,255,255,0.2)',
+                display: 'flex',
+                alignItems: 'center',
+                gap: 1.5,
+                cursor: 'pointer',
+                position: 'relative',
+                zIndex: 1,
+                transition: 'all 0.2s ease',
+                '&:hover': { background: 'rgba(255,255,255,0.2)' },
+              }}
+            >
+              <Box
+                sx={{
+                  width: 36,
+                  height: 36,
+                  borderRadius: '10px',
+                  background: 'rgba(255,255,255,0.2)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                }}
+              >
+                <ShoppingCart sx={{ color: 'white', fontSize: '1.1rem' }} />
+              </Box>
+              <Box sx={{ flex: 1 }}>
+                <Typography sx={{ color: 'white', fontWeight: 700, fontSize: '0.85rem', lineHeight: 1.2 }}>
+                  {itemCount} item{itemCount !== 1 ? 's' : ''} in cart
+                </Typography>
+                <Typography sx={{ color: 'rgba(255,255,255,0.75)', fontSize: '0.75rem' }}>
+                  ₹{total.toFixed(2)} total
+                </Typography>
+              </Box>
+              <ArrowForward sx={{ color: 'rgba(255,255,255,0.7)', fontSize: '1rem' }} />
+            </Box>
+          )}
+        </Box>
+
+        {/* Nav Items */}
+        <Box sx={{ flex: 1, px: 2, py: 2.5, overflowY: 'auto' }}>
+          <Typography
+            sx={{
+              px: 1,
+              mb: 1.5,
+              fontSize: '0.65rem',
+              fontWeight: 700,
+              letterSpacing: '0.12em',
+              textTransform: 'uppercase',
+              color: '#a1a1aa',
+            }}
+          >
+            Navigation
+          </Typography>
+
+          {menuItems.map((item, index) => {
+            const active = isActive(item.path);
+            return (
+              <Box
+                key={item.path}
+                component={Link}
+                to={item.path}
+                sx={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 1.5,
+                  px: 2,
+                  py: 1.5,
+                  mb: 0.5,
+                  borderRadius: '14px',
+                  textDecoration: 'none',
+                  background: active
+                    ? 'linear-gradient(135deg, #f0fdf4, #dcfce7)'
+                    : 'transparent',
+                  border: active
+                    ? '1px solid #bbf7d0'
+                    : '1px solid transparent',
+                  transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
+                  animation: `fadeInUp 0.4s ease both`,
+                  animationDelay: `${index * 60}ms`,
+                  '&:hover': {
+                    background: active ? 'linear-gradient(135deg, #f0fdf4, #dcfce7)' : '#f4f4f5',
+                    transform: 'translateX(4px)',
+                  },
+                }}
+              >
+                {/* Icon container */}
+                <Box
+                  sx={{
+                    width: 40,
+                    height: 40,
+                    borderRadius: '12px',
+                    background: active
+                      ? 'linear-gradient(135deg, #15803d, #22c55e)'
+                      : '#f4f4f5',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    flexShrink: 0,
+                    transition: 'all 0.2s ease',
+                    boxShadow: active ? '0 4px 12px rgba(21,128,61,0.3)' : 'none',
+                  }}
+                >
+                  <Box sx={{ color: active ? 'white' : '#71717a', display: 'flex' }}>
+                    {item.icon}
+                  </Box>
+                </Box>
+
+                <Box sx={{ flex: 1 }}>
+                  <Typography
+                    sx={{
+                      fontWeight: active ? 700 : 500,
+                      fontSize: '0.95rem',
+                      color: active ? '#15803d' : '#18181b',
+                      lineHeight: 1.2,
+                    }}
+                  >
+                    {item.text}
+                  </Typography>
+                </Box>
+
+                {active && (
+                  <Box
+                    sx={{
+                      width: 6,
+                      height: 6,
+                      borderRadius: '50%',
+                      background: '#15803d',
+                    }}
+                  />
+                )}
+              </Box>
+            );
+          })}
+        </Box>
+
+        {/* Drawer Footer */}
+        <Box
+          sx={{
+            px: 3,
+            py: 2.5,
+            borderTop: '1px solid #f4f4f5',
+            background: '#fafafa',
+          }}
+        >
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+            <Box
+              sx={{
+                width: 8,
+                height: 8,
+                borderRadius: '50%',
+                background: '#22c55e',
+                boxShadow: '0 0 0 3px rgba(34,197,94,0.2)',
+              }}
+            />
+            <Typography sx={{ fontSize: '0.75rem', color: '#71717a', fontWeight: 500 }}>
+              Organic • Natural • Pure
+            </Typography>
+          </Box>
+        </Box>
       </Drawer>
 
-      {/* Enhanced Stock Validation Alert */}
+      {/* Stock Alert */}
       <Snackbar
         open={showStockAlert}
         autoHideDuration={6000}
-        onClose={handleCloseStockAlert}
-        anchorOrigin={{
-          vertical: 'top',
-          horizontal: 'center'
-        }}
-        sx={{ 
-          mt: 8,
-          zIndex: 1400
-        }}
+        onClose={() => { setShowStockAlert(false); setStockErrors([]); }}
+        anchorOrigin={{ vertical: 'top', horizontal: 'center' }}
+        sx={{ mt: 9, zIndex: 1400 }}
       >
         <Alert
-          onClose={handleCloseStockAlert}
+          onClose={() => { setShowStockAlert(false); setStockErrors([]); }}
           severity="warning"
           variant="filled"
-          sx={{ 
+          sx={{
             width: '100%',
-            maxWidth: 500,
-            borderRadius: 3,
-            boxShadow: '0 8px 32px rgba(255, 152, 0, 0.3)',
-            '& .MuiAlert-icon': {
-              fontSize: '1.5rem'
-            }
+            maxWidth: 480,
+            borderRadius: '16px',
+            boxShadow: '0 8px 32px rgba(245,158,11,0.3)',
+            '& .MuiAlert-icon': { fontSize: '1.4rem' },
           }}
         >
-          <Box>
-            <Typography variant="body1" sx={{ fontWeight: 700, mb: 1 }}>
-              Stock Availability Issues
+          <Typography variant="body2" sx={{ fontWeight: 700, mb: 0.5 }}>
+            Stock Availability Issues
+          </Typography>
+          {stockErrors.map((err, i) => (
+            <Typography key={i} variant="body2" sx={{ fontSize: '0.8rem', opacity: 0.95 }}>
+              • {err}
             </Typography>
-            {stockErrors.map((error, index) => (
-              <Typography key={index} variant="body2" sx={{ 
-                fontSize: '0.875rem',
-                opacity: 0.95,
-                '&:not(:last-child)': { mb: 0.5 }
-              }}>
-                • {error}
-              </Typography>
-            ))}
-          </Box>
+          ))}
         </Alert>
       </Snackbar>
     </>

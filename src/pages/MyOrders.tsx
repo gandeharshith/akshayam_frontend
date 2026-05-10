@@ -1,631 +1,201 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import {
-  Container,
-  Typography,
-  Box,
-  Card,
-  CardContent,
-  TextField,
-  Button,
-  CircularProgress,
-  Alert,
-  Chip,
-  Accordion,
-  AccordionSummary,
-  AccordionDetails,
-  List,
-  ListItem,
-  ListItemText,
-  Divider,
-  Grid,
-  Dialog,
-  DialogTitle,
-  DialogContent,
-  DialogActions,
-  IconButton,
-  Paper,
-  Table,
-  TableBody,
-  TableCell,
-  TableContainer,
-  TableHead,
-  TableRow,
-  FormControl,
-  Select,
-  MenuItem
+  Container, Typography, Box, Grid, Button, TextField,
+  CircularProgress, Alert, Chip, Divider, IconButton, Collapse
 } from '@mui/material';
-import {
-  ExpandMore,
-  Search,
-  Edit,
-  Add,
-  Remove,
-  Delete,
-  Close
-} from '@mui/icons-material';
-import { ordersAPI, productsAPI } from '../services/api';
-import { Order, OrderItem, OrderEditRequest, UserLogin, Product } from '../types';
+import { ExpandMore, ExpandLess, LocalShipping, CheckCircle, HourglassEmpty, Cancel, Search, Receipt } from '@mui/icons-material';
+import { ordersAPI } from '../services/api';
+import { Order } from '../types';
+
+const statusConfig: Record<string, { label: string; color: string; bg: string; border: string; icon: React.ReactNode }> = {
+  pending:    { label: 'Pending',    color: '#d97706', bg: '#fef3c7', border: '#fcd34d', icon: <HourglassEmpty sx={{ fontSize: '0.9rem' }} /> },
+  confirmed:  { label: 'Confirmed',  color: '#1d4ed8', bg: '#eff6ff', border: '#bfdbfe', icon: <CheckCircle sx={{ fontSize: '0.9rem' }} /> },
+  processing: { label: 'Processing', color: '#7c3aed', bg: '#f5f3ff', border: '#ddd6fe', icon: <HourglassEmpty sx={{ fontSize: '0.9rem' }} /> },
+  shipped:    { label: 'Shipped',    color: '#0369a1', bg: '#f0f9ff', border: '#bae6fd', icon: <LocalShipping sx={{ fontSize: '0.9rem' }} /> },
+  delivered:  { label: 'Delivered',  color: '#15803d', bg: '#f0fdf4', border: '#bbf7d0', icon: <CheckCircle sx={{ fontSize: '0.9rem' }} /> },
+  cancelled:  { label: 'Cancelled',  color: '#dc2626', bg: '#fef2f2', border: '#fecaca', icon: <Cancel sx={{ fontSize: '0.9rem' }} /> },
+};
+
+const OrderCard: React.FC<{ order: Order }> = ({ order }) => {
+  const [expanded, setExpanded] = useState(false);
+  const cfg = statusConfig[order.status?.toLowerCase()] || statusConfig.pending;
+  const date = new Date(order.created_at).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' });
+
+  return (
+    <Box sx={{ background: 'white', borderRadius: '20px', border: '1px solid rgba(0,0,0,0.06)', boxShadow: '0 2px 12px rgba(0,0,0,0.05)', overflow: 'hidden', mb: 2, transition: 'all 0.3s ease', '&:hover': { boxShadow: '0 8px 24px rgba(0,0,0,0.08)', borderColor: 'rgba(21,128,61,0.1)' } }}>
+      {/* Header */}
+      <Box sx={{ p: { xs: 2, md: 2.5 }, display: 'flex', alignItems: 'center', gap: 2, cursor: 'pointer' }} onClick={() => setExpanded(!expanded)}>
+        <Box sx={{ width: 44, height: 44, borderRadius: '12px', background: cfg.bg, border: `1px solid ${cfg.border}`, display: 'flex', alignItems: 'center', justifyContent: 'center', color: cfg.color, flexShrink: 0 }}>
+          {cfg.icon}
+        </Box>
+        <Box sx={{ flex: 1, minWidth: 0 }}>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, flexWrap: 'wrap', mb: 0.25 }}>
+            <Typography sx={{ fontWeight: 700, fontSize: { xs: '0.85rem', md: '0.95rem' }, color: '#18181b' }}>
+              Order #{order._id?.slice(-8).toUpperCase()}
+            </Typography>
+            <Chip label={cfg.label} size="small" sx={{ background: cfg.bg, color: cfg.color, fontWeight: 700, fontSize: '0.65rem', height: 20, border: `1px solid ${cfg.border}` }} />
+          </Box>
+          <Typography sx={{ fontSize: '0.78rem', color: '#71717a' }}>{date} · {order.items.length} item{order.items.length !== 1 ? 's' : ''}</Typography>
+        </Box>
+        <Box sx={{ textAlign: 'right', flexShrink: 0 }}>
+          <Typography sx={{ fontWeight: 800, fontSize: '1.05rem', color: '#15803d', letterSpacing: '-0.01em' }}>₹{order.total_amount.toFixed(0)}</Typography>
+          <IconButton size="small" sx={{ mt: 0.25, color: '#71717a', width: 28, height: 28 }}>
+            {expanded ? <ExpandLess sx={{ fontSize: '1.1rem' }} /> : <ExpandMore sx={{ fontSize: '1.1rem' }} />}
+          </IconButton>
+        </Box>
+      </Box>
+
+      {/* Expanded */}
+      <Collapse in={expanded}>
+        <Divider sx={{ borderColor: 'rgba(0,0,0,0.05)' }} />
+        <Box sx={{ p: { xs: 2, md: 2.5 } }}>
+          {/* Items */}
+          <Typography sx={{ fontSize: '0.72rem', fontWeight: 700, color: '#a1a1aa', letterSpacing: '0.08em', textTransform: 'uppercase', mb: 1.5 }}>Items Ordered</Typography>
+          {order.items.map((item, i) => (
+            <Box key={i} sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', py: 1, borderBottom: i < order.items.length - 1 ? '1px solid rgba(0,0,0,0.04)' : 'none' }}>
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
+                <Box sx={{ width: 8, height: 8, borderRadius: '50%', background: '#15803d', flexShrink: 0 }} />
+                <Typography sx={{ fontSize: '0.875rem', color: '#374151', fontWeight: 500 }}>{item.product_name}</Typography>
+                <Typography sx={{ fontSize: '0.78rem', color: '#a1a1aa' }}>×{item.quantity}</Typography>
+              </Box>
+              <Typography sx={{ fontSize: '0.875rem', fontWeight: 600, color: '#18181b' }}>₹{item.total.toFixed(0)}</Typography>
+            </Box>
+          ))}
+
+          <Divider sx={{ my: 2, borderColor: 'rgba(0,0,0,0.05)' }} />
+
+          {/* Delivery info */}
+          <Grid container spacing={2}>
+            <Grid item xs={12} sm={6}>
+              <Typography sx={{ fontSize: '0.72rem', fontWeight: 700, color: '#a1a1aa', letterSpacing: '0.08em', textTransform: 'uppercase', mb: 1 }}>Delivery To</Typography>
+              <Typography sx={{ fontSize: '0.875rem', fontWeight: 600, color: '#18181b', mb: 0.25 }}>{order.user_name}</Typography>
+              <Typography sx={{ fontSize: '0.8rem', color: '#71717a', mb: 0.25 }}>{order.user_email}</Typography>
+              <Typography sx={{ fontSize: '0.8rem', color: '#71717a', mb: 0.25 }}>{order.user_phone}</Typography>
+              <Typography sx={{ fontSize: '0.8rem', color: '#71717a' }}>{order.user_address}</Typography>
+            </Grid>
+            <Grid item xs={12} sm={6}>
+              <Typography sx={{ fontSize: '0.72rem', fontWeight: 700, color: '#a1a1aa', letterSpacing: '0.08em', textTransform: 'uppercase', mb: 1 }}>Order Total</Typography>
+              <Box sx={{ p: 2, borderRadius: '12px', background: '#f0fdf4', border: '1px solid #bbf7d0' }}>
+                <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 0.75 }}>
+                  <Typography sx={{ fontSize: '0.8rem', color: '#52525b' }}>Subtotal</Typography>
+                  <Typography sx={{ fontSize: '0.8rem', fontWeight: 600, color: '#18181b' }}>₹{order.total_amount.toFixed(0)}</Typography>
+                </Box>
+                <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1 }}>
+                  <Typography sx={{ fontSize: '0.8rem', color: '#52525b' }}>Delivery</Typography>
+                  <Typography sx={{ fontSize: '0.8rem', fontWeight: 600, color: '#15803d' }}>Free</Typography>
+                </Box>
+                <Divider sx={{ borderColor: '#bbf7d0', mb: 1 }} />
+                <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
+                  <Typography sx={{ fontSize: '0.9rem', fontWeight: 700, color: '#18181b' }}>Total</Typography>
+                  <Typography sx={{ fontSize: '1rem', fontWeight: 800, color: '#15803d' }}>₹{order.total_amount.toFixed(0)}</Typography>
+                </Box>
+              </Box>
+            </Grid>
+          </Grid>
+        </Box>
+      </Collapse>
+    </Box>
+  );
+};
 
 const MyOrders: React.FC = () => {
-  const [email, setEmail] = useState<string>('');
-  const [password, setPassword] = useState<string>('');
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
   const [orders, setOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string>('');
-  const [searched, setSearched] = useState(false);
+  const [error, setError] = useState('');
+  const [fetched, setFetched] = useState(false);
 
-  // Order editing states
-  const [editingOrder, setEditingOrder] = useState<Order | null>(null);
-  const [editDialogOpen, setEditDialogOpen] = useState(false);
-  const [editItems, setEditItems] = useState<OrderItem[]>([]);
-  const [editUserInfo, setEditUserInfo] = useState({
-    name: '',
-    email: '',
-    phone: '',
-    address: '',
-    password: ''
-  });
-  const [products, setProducts] = useState<Product[]>([]);
-  const [saving, setSaving] = useState(false);
-  const [editError, setEditError] = useState('');
-
-  const handleSearch = async () => {
-    if (!email.trim()) {
-      setError('Please enter your email address');
-      return;
-    }
-    
-    if (!password.trim()) {
-      setError('Please enter your password');
-      return;
-    }
-
-    setLoading(true);
-    setError('');
+  const handleFetch = async () => {
+    if (!email || !password) { setError('Please enter your email and password.'); return; }
+    setLoading(true); setError('');
     try {
-      const userOrders = await ordersAPI.getUserOrders(email, password);
-      setOrders(userOrders);
-      setSearched(true);
-    } catch (err) {
-      setError('Failed to fetch orders. Please check your email and password and try again.');
-      console.error('Error fetching orders:', err);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  // Load products for editing
-  useEffect(() => {
-    const loadProducts = async () => {
-      try {
-        const allProducts = await productsAPI.getAll();
-        setProducts(allProducts);
-      } catch (err) {
-        console.error('Error loading products:', err);
-      }
-    };
-    loadProducts();
-  }, []);
-
-  const canEditOrder = (order: Order) => {
-    return order.status === 'pending' || order.status === 'confirmed';
-  };
-
-  const handleEditOrder = (order: Order) => {
-    setEditingOrder(order);
-    setEditItems([...order.items]);
-    setEditUserInfo({
-      name: order.user_name,
-      email: order.user_email,
-      phone: order.user_phone,
-      address: order.user_address,
-      password: password // Use the current password
-    });
-    setEditError('');
-    setEditDialogOpen(true);
-  };
-
-  const handleAddProduct = () => {
-    if (products.length > 0) {
-      const firstProduct = products[0];
-      const newItem: OrderItem = {
-        product_id: firstProduct._id,
-        product_name: firstProduct.name,
-        quantity: 1,
-        price: firstProduct.price,
-        total: firstProduct.price
-      };
-      setEditItems([...editItems, newItem]);
-    }
-  };
-
-  const handleUpdateItem = (index: number, field: keyof OrderItem, value: any) => {
-    const newItems = [...editItems];
-    newItems[index] = { ...newItems[index], [field]: value };
-    
-    if (field === 'product_id') {
-      const product = products.find(p => p._id === value);
-      if (product) {
-        newItems[index].product_name = product.name;
-        newItems[index].price = product.price;
-        newItems[index].total = product.price * newItems[index].quantity;
-      }
-    } else if (field === 'quantity') {
-      newItems[index].total = newItems[index].price * value;
-    }
-    
-    setEditItems(newItems);
-  };
-
-  const handleRemoveItem = (index: number) => {
-    const newItems = editItems.filter((_, i) => i !== index);
-    setEditItems(newItems);
-  };
-
-  const calculateTotal = () => {
-    return editItems.reduce((sum, item) => sum + item.total, 0);
-  };
-
-  const handleSaveOrder = async () => {
-    if (editItems.length === 0) {
-      setEditError('Order must have at least one item');
-      return;
-    }
-
-    if (!editUserInfo.name.trim() || !editUserInfo.email.trim() || !editUserInfo.phone.trim() || !editUserInfo.address.trim()) {
-      setEditError('All user information fields are required');
-      return;
-    }
-
-    setSaving(true);
-    setEditError('');
-    
-    try {
-      const orderEdit: OrderEditRequest = {
-        items: editItems,
-        user_info: editUserInfo
-      };
-      
-      const userLogin: UserLogin = {
-        email: editUserInfo.email,
-        password: editUserInfo.password
-      };
-
-      const updatedOrder = await ordersAPI.editOrder(editingOrder!._id!, orderEdit, userLogin);
-      
-      // Update the orders list
-      setOrders(orders.map(order => 
-        order._id === updatedOrder._id ? updatedOrder : order
-      ));
-      
-      setEditDialogOpen(false);
-      setEditingOrder(null);
-    } catch (err: any) {
-      console.error('Error updating order:', err);
-      
-      // Handle different types of error responses
-      let errorMessage = 'Failed to update order. Please try again.';
-      
-      if (err.response?.data) {
-        const errorData = err.response.data;
-        
-        // Handle FastAPI validation errors (422 status)
-        if (err.response.status === 422 && Array.isArray(errorData.detail)) {
-          // Extract validation error messages
-          const validationErrors = errorData.detail.map((error: any) => {
-            if (error.msg) return error.msg;
-            if (error.type) return `${error.type}: ${error.input}`;
-            return 'Validation error';
-          });
-          errorMessage = validationErrors.join(', ');
-        }
-        // Handle string error messages
-        else if (typeof errorData.detail === 'string') {
-          errorMessage = errorData.detail;
-        }
-        // Handle object error responses with message field
-        else if (errorData.message) {
-          errorMessage = errorData.message;
-        }
-        // Handle other object responses
-        else if (typeof errorData === 'string') {
-          errorMessage = errorData;
-        }
-      }
-      
-      setEditError(errorMessage);
-    } finally {
-      setSaving(false);
-    }
-  };
-
-  const handleCloseEdit = () => {
-    setEditDialogOpen(false);
-    setEditingOrder(null);
-    setEditError('');
-  };
-
-  const getStatusColor = (status: string) => {
-    switch (status.toLowerCase()) {
-      case 'pending':
-        return 'warning';
-      case 'confirmed':
-        return 'info';
-      case 'shipped':
-        return 'primary';
-      case 'delivered':
-        return 'success';
-      case 'cancelled':
-        return 'error';
-      default:
-        return 'default';
-    }
-  };
-
-  const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString('en-IN', {
-      year: 'numeric',
-      month: 'long',
-      day: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit'
-    });
+      const data = await ordersAPI.getUserOrders(email, password);
+      setOrders(data); setFetched(true);
+    } catch { setError('Invalid credentials or no orders found.'); } finally { setLoading(false); }
   };
 
   return (
-    <Container maxWidth="lg" sx={{ py: 4 }}>
-      <Typography variant="h4" component="h1" gutterBottom>
-        My Orders
-      </Typography>
-
-      <Card sx={{ mb: 4 }}>
-        <CardContent>
-          <Typography variant="h6" gutterBottom>
-            Track Your Orders
-          </Typography>
-          <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
-            Enter your email address and password to view all your orders and track their status
-          </Typography>
-          
-          <Box sx={{ display: 'flex', gap: 2, alignItems: 'center', flexDirection: { xs: 'column', sm: 'row' } }}>
-            <TextField
-              fullWidth
-              label="Email Address"
-              type="email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              onKeyPress={(e) => e.key === 'Enter' && handleSearch()}
-              disabled={loading}
-            />
-            <TextField
-              fullWidth
-              label="Password"
-              type="password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              onKeyPress={(e) => e.key === 'Enter' && handleSearch()}
-              disabled={loading}
-              helperText="Password you set during checkout"
-            />
-            <Button
-              variant="contained"
-              onClick={handleSearch}
-              disabled={loading}
-              startIcon={loading ? <CircularProgress size={20} /> : <Search />}
-              sx={{ minWidth: 120 }}
-            >
-              {loading ? 'Searching...' : 'Search'}
-            </Button>
+    <Box sx={{ background: '#fafafa', minHeight: '100vh' }}>
+      {/* Hero */}
+      <Box sx={{ background: 'linear-gradient(135deg,#0f4c25 0%,#15803d 60%,#16a34a 100%)', pt: { xs: 5, md: 7 }, pb: { xs: 8, md: 10 }, position: 'relative', overflow: 'hidden', '&::after': { content: '""', position: 'absolute', bottom: -2, left: 0, right: 0, height: 60, background: 'linear-gradient(to bottom,transparent,#fafafa)' } }}>
+        <Box sx={{ position: 'absolute', top: -60, right: -60, width: 200, height: 200, borderRadius: '50%', background: 'rgba(255,255,255,0.04)', pointerEvents: 'none' }} />
+        <Container maxWidth="md" sx={{ position: 'relative', zIndex: 1, textAlign: 'center' }}>
+          <Box sx={{ display: 'inline-flex', alignItems: 'center', gap: 1, px: 2, py: 0.75, borderRadius: '100px', background: 'rgba(255,255,255,0.15)', border: '1px solid rgba(255,255,255,0.25)', mb: 2.5 }}>
+            <Receipt sx={{ color: '#4ade80', fontSize: '0.9rem' }} />
+            <Typography sx={{ color: 'rgba(255,255,255,0.9)', fontSize: '0.72rem', fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase' }}>Order History</Typography>
           </Box>
-        </CardContent>
-      </Card>
-
-      {error && (
-        <Alert severity="error" sx={{ mb: 3 }}>
-          {error}
-        </Alert>
-      )}
-
-      {searched && orders.length === 0 && !loading && (
-        <Alert severity="info" sx={{ mb: 3 }}>
-          No orders found for this email address.
-        </Alert>
-      )}
-
-      {orders.length > 0 && (
-        <Box>
-          <Typography variant="h6" sx={{ mb: 2 }}>
-            Found {orders.length} order{orders.length !== 1 ? 's' : ''}
+          <Typography sx={{ fontWeight: 800, fontSize: { xs: '2rem', md: '2.8rem' }, color: 'white', letterSpacing: '-0.02em', mb: 1.5 }}>My Orders</Typography>
+          <Typography sx={{ color: 'rgba(255,255,255,0.8)', fontSize: { xs: '0.95rem', md: '1.05rem' }, lineHeight: 1.7 }}>
+            Track and manage all your orders in one place
           </Typography>
+        </Container>
+      </Box>
 
-          {orders.map((order) => (
-            <Accordion key={order._id} sx={{ mb: 2 }}>
-              <AccordionSummary expandIcon={<ExpandMore />}>
-                <Box sx={{ width: '100%', display: 'flex', justifyContent: 'space-between', alignItems: 'center', pr: 2 }}>
-                  <Box>
-                    <Typography variant="subtitle1" component="div">
-                      Order #{order._id?.slice(-8).toUpperCase()}
-                    </Typography>
-                    <Typography variant="body2" color="text.secondary">
-                      {formatDate(order.created_at)}
-                    </Typography>
-                  </Box>
-                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-                    <Chip
-                      label={order.status.charAt(0).toUpperCase() + order.status.slice(1)}
-                      color={getStatusColor(order.status) as any}
-                      size="small"
-                    />
-                    {canEditOrder(order) && (
-                      <Button
-                        size="small"
-                        startIcon={<Edit />}
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          handleEditOrder(order);
-                        }}
-                        variant="outlined"
-                      >
-                        Edit
-                      </Button>
-                    )}
-                    <Typography variant="h6" color="primary">
-                      ₹{order.total_amount.toFixed(2)}
-                    </Typography>
-                  </Box>
-                </Box>
-              </AccordionSummary>
-              <AccordionDetails>
-                <Grid container spacing={3}>
-                  <Grid item xs={12} md={6}>
-                    <Typography variant="subtitle2" gutterBottom>
-                      Order Items
-                    </Typography>
-                    <List dense>
-                      {order.items.map((item, index) => (
-                        <ListItem key={index} sx={{ px: 0 }}>
-                          <ListItemText
-                            primary={item.product_name}
-                            secondary={
-                              <Box>
-                                <Typography variant="body2" component="span">
-                                  Quantity: {item.quantity} × ₹{item.price} = ₹{item.total.toFixed(2)}
-                                </Typography>
-                              </Box>
-                            }
-                          />
-                        </ListItem>
-                      ))}
-                    </List>
-                  </Grid>
-                  
-                  <Grid item xs={12} md={6}>
-                    <Typography variant="subtitle2" gutterBottom>
-                      Delivery Information
-                    </Typography>
-                    <Box sx={{ mb: 2 }}>
-                      <Typography variant="body2">
-                        <strong>Name:</strong> {order.user_name}
-                      </Typography>
-                      <Typography variant="body2">
-                        <strong>Email:</strong> {order.user_email}
-                      </Typography>
-                      <Typography variant="body2">
-                        <strong>Phone:</strong> {order.user_phone}
-                      </Typography>
-                      <Typography variant="body2">
-                        <strong>Address:</strong> {order.user_address}
-                      </Typography>
-                    </Box>
-                    
-                    <Divider sx={{ my: 1 }} />
-                    
-                    <Box>
-                      <Typography variant="body2">
-                        <strong>Order Date:</strong> {formatDate(order.created_at)}
-                      </Typography>
-                      {order.updated_at !== order.created_at && (
-                        <Typography variant="body2">
-                          <strong>Last Updated:</strong> {formatDate(order.updated_at)}
-                        </Typography>
-                      )}
-                    </Box>
-                  </Grid>
-                </Grid>
-              </AccordionDetails>
-            </Accordion>
-          ))}
-        </Box>
-      )}
+      <Container maxWidth="md" sx={{ px: { xs: 2, md: 3 }, py: { xs: 3, md: 5 } }}>
+        {/* Login card */}
+        {!fetched && (
+          <Box sx={{ background: 'white', borderRadius: '24px', border: '1px solid rgba(0,0,0,0.06)', boxShadow: '0 4px 24px rgba(0,0,0,0.07)', p: { xs: 3, md: 5 }, mb: 4, maxWidth: 480, mx: 'auto' }}>
+            <Box sx={{ textAlign: 'center', mb: 3 }}>
+              <Box sx={{ width: 56, height: 56, borderRadius: '16px', background: 'linear-gradient(135deg,#f0fdf4,#dcfce7)', border: '1px solid #bbf7d0', display: 'flex', alignItems: 'center', justifyContent: 'center', mx: 'auto', mb: 2 }}>
+                <Receipt sx={{ color: '#15803d', fontSize: '1.5rem' }} />
+              </Box>
+              <Typography sx={{ fontWeight: 700, fontSize: '1.2rem', color: '#18181b', mb: 0.5 }}>View Your Orders</Typography>
+              <Typography sx={{ fontSize: '0.875rem', color: '#71717a' }}>Enter your credentials to access your order history</Typography>
+            </Box>
 
-      {/* Edit Order Dialog */}
-      <Dialog 
-        open={editDialogOpen} 
-        onClose={handleCloseEdit} 
-        maxWidth="md" 
-        fullWidth
-        PaperProps={{
-          sx: { minHeight: '70vh' }
-        }}
-      >
-        <DialogTitle sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-          Edit Order {editingOrder?._id?.slice(-8).toUpperCase()}
-          <IconButton onClick={handleCloseEdit}>
-            <Close />
-          </IconButton>
-        </DialogTitle>
-        
-        <DialogContent>
-          {editError && (
-            <Alert severity="error" sx={{ mb: 2 }}>
-              {editError}
-            </Alert>
-          )}
+            {error && <Alert severity="error" sx={{ borderRadius: '12px', mb: 2.5, fontSize: '0.875rem' }} onClose={() => setError('')}>{error}</Alert>}
 
-          {/* Order Items */}
-          <Typography variant="h6" gutterBottom>
-            Order Items
-          </Typography>
-          
-          <TableContainer component={Paper} sx={{ mb: 3 }}>
-            <Table size="small">
-              <TableHead>
-                <TableRow>
-                  <TableCell>Product</TableCell>
-                  <TableCell align="right">Price</TableCell>
-                  <TableCell align="right">Quantity</TableCell>
-                  <TableCell align="right">Total</TableCell>
-                  <TableCell align="right">Actions</TableCell>
-                </TableRow>
-              </TableHead>
-              <TableBody>
-                {editItems.map((item, index) => (
-                  <TableRow key={index}>
-                    <TableCell>
-                      <FormControl fullWidth size="small">
-                        <Select
-                          value={item.product_id}
-                          onChange={(e) => handleUpdateItem(index, 'product_id', e.target.value)}
-                        >
-                          {products.map((product) => (
-                            <MenuItem key={product._id} value={product._id}>
-                              {product.name}
-                            </MenuItem>
-                          ))}
-                        </Select>
-                      </FormControl>
-                    </TableCell>
-                    <TableCell align="right">
-                      ₹{item.price.toFixed(2)}
-                    </TableCell>
-                    <TableCell align="right">
-                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                        <IconButton 
-                          size="small"
-                          onClick={() => handleUpdateItem(index, 'quantity', Math.max(1, item.quantity - 1))}
-                        >
-                          <Remove />
-                        </IconButton>
-                        <TextField
-                          size="small"
-                          type="number"
-                          value={item.quantity}
-                          onChange={(e) => handleUpdateItem(index, 'quantity', Math.max(1, parseInt(e.target.value) || 1))}
-                          sx={{ width: 70 }}
-                          inputProps={{ min: 1 }}
-                        />
-                        <IconButton 
-                          size="small"
-                          onClick={() => handleUpdateItem(index, 'quantity', item.quantity + 1)}
-                        >
-                          <Add />
-                        </IconButton>
-                      </Box>
-                    </TableCell>
-                    <TableCell align="right">
-                      ₹{item.total.toFixed(2)}
-                    </TableCell>
-                    <TableCell align="right">
-                      <IconButton 
-                        size="small" 
-                        color="error"
-                        onClick={() => handleRemoveItem(index)}
-                      >
-                        <Delete />
-                      </IconButton>
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          </TableContainer>
-
-          <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
-            <Button 
-              startIcon={<Add />} 
-              onClick={handleAddProduct}
-              variant="outlined"
-            >
-              Add Product
-            </Button>
-            <Typography variant="h6" color="primary">
-              Total: ₹{calculateTotal().toFixed(2)}
-            </Typography>
+            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+              <TextField fullWidth label="Email Address" type="email" value={email} onChange={e => setEmail(e.target.value)}
+                onKeyDown={e => e.key === 'Enter' && handleFetch()}
+                sx={{ '& .MuiOutlinedInput-root': { borderRadius: '12px', '&.Mui-focused fieldset': { borderColor: '#15803d', borderWidth: '1.5px' } }, '& .MuiInputLabel-root.Mui-focused': { color: '#15803d' } }} />
+              <TextField fullWidth label="Password" type="password" value={password} onChange={e => setPassword(e.target.value)}
+                onKeyDown={e => e.key === 'Enter' && handleFetch()}
+                sx={{ '& .MuiOutlinedInput-root': { borderRadius: '12px', '&.Mui-focused fieldset': { borderColor: '#15803d', borderWidth: '1.5px' } }, '& .MuiInputLabel-root.Mui-focused': { color: '#15803d' } }} />
+              <Button fullWidth variant="contained" onClick={handleFetch} disabled={loading} startIcon={loading ? <CircularProgress size={18} color="inherit" /> : <Search />}
+                sx={{ background: 'linear-gradient(135deg,#15803d,#22c55e)', color: 'white', fontWeight: 700, py: 1.75, borderRadius: '14px', textTransform: 'none', fontSize: '1rem', boxShadow: '0 4px 16px rgba(21,128,61,0.3)', '&:hover': { background: 'linear-gradient(135deg,#14532d,#15803d)' }, '&.Mui-disabled': { background: '#e4e4e7', color: '#a1a1aa' } }}>
+                {loading ? 'Loading...' : 'View My Orders'}
+              </Button>
+            </Box>
           </Box>
+        )}
 
-          {/* User Information */}
-          <Typography variant="h6" gutterBottom>
-            Delivery Information
-          </Typography>
-          
-          <Grid container spacing={2}>
-            <Grid item xs={12} sm={6}>
-              <TextField
-                fullWidth
-                label="Name"
-                value={editUserInfo.name}
-                onChange={(e) => setEditUserInfo({...editUserInfo, name: e.target.value})}
-                required
-              />
-            </Grid>
-            <Grid item xs={12} sm={6}>
-              <TextField
-                fullWidth
-                label="Email"
-                type="email"
-                value={editUserInfo.email}
-                onChange={(e) => setEditUserInfo({...editUserInfo, email: e.target.value})}
-                required
-              />
-            </Grid>
-            <Grid item xs={12} sm={6}>
-              <TextField
-                fullWidth
-                label="Phone"
-                value={editUserInfo.phone}
-                onChange={(e) => setEditUserInfo({...editUserInfo, phone: e.target.value})}
-                required
-              />
-            </Grid>
-            <Grid item xs={12} sm={6}>
-              <TextField
-                fullWidth
-                label="Password"
-                type="password"
-                value={editUserInfo.password}
-                onChange={(e) => setEditUserInfo({...editUserInfo, password: e.target.value})}
-                required
-                helperText="Required for authentication"
-              />
-            </Grid>
-            <Grid item xs={12}>
-              <TextField
-                fullWidth
-                label="Address"
-                multiline
-                rows={3}
-                value={editUserInfo.address}
-                onChange={(e) => setEditUserInfo({...editUserInfo, address: e.target.value})}
-                required
-              />
-            </Grid>
-          </Grid>
-        </DialogContent>
-        
-        <DialogActions>
-          <Button onClick={handleCloseEdit}>
-            Cancel
-          </Button>
-          <Button 
-            variant="contained" 
-            onClick={handleSaveOrder}
-            disabled={saving}
-          >
-            {saving ? <CircularProgress size={20} /> : 'Save Changes'}
-          </Button>
-        </DialogActions>
-      </Dialog>
-    </Container>
+        {/* Orders list */}
+        {fetched && (
+          <Box>
+            <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 3, flexWrap: 'wrap', gap: 1 }}>
+              <Box>
+                <Typography sx={{ fontWeight: 700, fontSize: '1.1rem', color: '#18181b' }}>
+                  {orders.length > 0 ? `${orders.length} Order${orders.length !== 1 ? 's' : ''} Found` : 'No Orders Found'}
+                </Typography>
+                <Typography sx={{ fontSize: '0.8rem', color: '#71717a' }}>{email}</Typography>
+              </Box>
+              <Button size="small" variant="outlined" onClick={() => { setFetched(false); setOrders([]); setEmail(''); setPassword(''); }}
+                sx={{ borderColor: 'rgba(0,0,0,0.12)', color: '#52525b', fontWeight: 600, borderRadius: '10px', textTransform: 'none', fontSize: '0.8rem', '&:hover': { borderColor: '#15803d', color: '#15803d', background: '#f0fdf4' } }}>
+                Switch Account
+              </Button>
+            </Box>
+
+            {error && <Alert severity="error" sx={{ borderRadius: '12px', mb: 2 }}>{error}</Alert>}
+
+            {orders.length === 0 ? (
+              <Box sx={{ textAlign: 'center', py: { xs: 6, md: 8 }, background: 'white', borderRadius: '20px', border: '1px solid rgba(0,0,0,0.06)' }}>
+                <Box sx={{ fontSize: '3.5rem', mb: 2 }}>📦</Box>
+                <Typography sx={{ fontWeight: 700, fontSize: '1.2rem', color: '#18181b', mb: 1 }}>No orders yet</Typography>
+                <Typography sx={{ color: '#71717a', fontSize: '0.9rem', mb: 3 }}>You haven't placed any orders with this account.</Typography>
+                <Button variant="contained" href="/products"
+                  sx={{ background: 'linear-gradient(135deg,#15803d,#22c55e)', color: 'white', fontWeight: 700, px: 4, py: 1.5, borderRadius: '14px', textTransform: 'none', boxShadow: '0 4px 16px rgba(21,128,61,0.3)', '&:hover': { background: 'linear-gradient(135deg,#14532d,#15803d)' } }}>
+                  Start Shopping
+                </Button>
+              </Box>
+            ) : (
+              orders.map(order => <OrderCard key={order._id} order={order} />)
+            )}
+          </Box>
+        )}
+      </Container>
+    </Box>
   );
 };
 
