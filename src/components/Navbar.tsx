@@ -11,10 +11,7 @@ import {
   useTheme,
   useMediaQuery,
   Snackbar,
-  Alert,
-  Chip,
-  Divider,
-  Avatar
+  Alert
 } from '@mui/material';
 import {
   ShoppingCart,
@@ -25,7 +22,6 @@ import {
   Assignment as OrdersIcon,
   Close as CloseIcon,
   MenuBook as RecipesIcon,
-  LocalFlorist,
   ArrowForward,
   Spa
 } from '@mui/icons-material';

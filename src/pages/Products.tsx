@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import {
-  Container, Typography, Box, Grid, Button, FormControl,
+  Container, Typography, Box, Grid, Button,
   Select, MenuItem, Drawer, Divider, TextField, Dialog,
   DialogContent, DialogActions, CircularProgress, Alert,
   Chip, IconButton, InputAdornment, Skeleton,
@@ -13,7 +13,7 @@ import { useSearchParams, useLocation } from 'react-router-dom';
 import { productsAPI, categoriesAPI, ordersAPI, stockAPI } from '../services/api';
 import { cachedApiCall } from '../services/cache';
 import { useCart } from '../contexts/CartContext';
-import { Product, Category, User, OrderItem, StockValidationItem } from '../types';
+import { Product, Category, User } from '../types';
 
 declare const process: { env: { REACT_APP_API_URL?: string } };
 const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:8000';
@@ -238,7 +238,7 @@ const Products: React.FC = () => {
   const [searchParams] = useSearchParams();
   const location = useLocation();
   const isAdminContext = location.pathname.startsWith('/adddmin');
-  const { items, total, itemCount, addItem, removeItem, updateQuantity, clearCart, minOrderValue } = useCart();
+  const { items, total, itemCount, addItem, updateQuantity, clearCart, minOrderValue } = useCart();
 
   useEffect(() => {
     (async () => {

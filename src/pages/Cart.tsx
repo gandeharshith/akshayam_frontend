@@ -3,7 +3,7 @@ import {
   Container, Typography, Box, Grid, Button, TextField,
   CircularProgress, Alert, IconButton, Divider, Chip
 } from '@mui/material';
-import { Add, Remove, Delete, ShoppingCart, ArrowForward, ArrowBack, CheckCircle } from '@mui/icons-material';
+import { Add, Remove, Delete, ArrowForward, ArrowBack, CheckCircle } from '@mui/icons-material';
 import { useNavigate } from 'react-router-dom';
 import { useCart } from '../contexts/CartContext';
 import { ordersAPI, stockAPI } from '../services/api';
