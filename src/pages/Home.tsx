@@ -64,7 +64,8 @@ const FeaturedBanner: React.FC<{
   newlyLaunched: Product | null;
   thisWeeksFresh: Product | null;
   onNavigate: (categoryId: string) => void;
-}> = ({ newlyLaunched, thisWeeksFresh, onNavigate }) => {
+  onProductNavigate: (productId: string) => void;
+}> = ({ newlyLaunched, thisWeeksFresh, onNavigate, onProductNavigate }) => {
   const [currentIndex, setCurrentIndex] = useState(0);
   const products = [newlyLaunched, thisWeeksFresh].filter(Boolean) as Product[];
 
@@ -80,7 +81,7 @@ const FeaturedBanner: React.FC<{
 
   return (
     <Box
-      onClick={() => onNavigate(current.category_id)}
+      onClick={() => onProductNavigate(current._id)}
       sx={{
         mb: { xs: 4, md: 6 },
         cursor: 'pointer',
@@ -381,6 +382,7 @@ const Home: React.FC = () => {
             newlyLaunched={featuredProducts.newly_launched}
             thisWeeksFresh={featuredProducts.this_weeks_fresh}
             onNavigate={categoryId => navigate(`/products?category=${categoryId}`)}
+            onProductNavigate={productId => navigate(`/products/${productId}`)}
           />
         )}
 

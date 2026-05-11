@@ -16,6 +16,7 @@ const Cart = lazy(() => import('./pages/Cart'));
 const MyOrders = lazy(() => import('./pages/MyOrders'));
 const Admin = lazy(() => import('./pages/Admin'));
 const AdminLogin = lazy(() => import('./pages/AdminLogin'));
+const ProductDetail = lazy(() => import('./pages/ProductDetail'));
 
 // Scroll to top on every route change
 const ScrollToTop: React.FC = () => {
@@ -89,6 +90,7 @@ const AppContent: React.FC = () => {
               <Route path="/" element={<Home />} />
               <Route path="/about" element={<About />} />
               <Route path="/products" element={<Products />} />
+              <Route path="/products/:id" element={<ProductDetail />} />
               <Route path="/recipes" element={<Recipes />} />
               <Route path="/cart" element={<Cart />} />
               <Route path="/my-orders" element={<MyOrders />} />

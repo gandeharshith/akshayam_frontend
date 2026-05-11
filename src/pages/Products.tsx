@@ -9,7 +9,7 @@ import {
   Add, Remove, ShoppingCart, Close, Search, Clear,
   ArrowForward, Store, FilterList, CheckCircle
 } from '@mui/icons-material';
-import { useSearchParams, useLocation } from 'react-router-dom';
+import { useSearchParams, useLocation, useNavigate } from 'react-router-dom';
 import { productsAPI, categoriesAPI, ordersAPI, stockAPI } from '../services/api';
 import { cachedApiCall } from '../services/cache';
 import { useCart } from '../contexts/CartContext';
@@ -25,8 +25,9 @@ const ProductCard: React.FC<{
   cartQty: number;
   onInc: (p: Product) => void;
   onDec: (id: string) => void;
+  onNavigate: (id: string) => void;
   delay?: number;
-}> = ({ product, onAddToCart, cartQty, onInc, onDec, delay = 0 }) => {
+}> = ({ product, onAddToCart, cartQty, onInc, onDec, onNavigate, delay = 0 }) => {
   const [imgErr, setImgErr] = useState(false);
   const oos = product.quantity === 0;
 
@@ -59,14 +60,16 @@ const ProductCard: React.FC<{
         }
       }}
     >
-      {/* Image */}
+      {/* Image — clickable → detail page */}
       <Box
+        onClick={() => onNavigate(product._id)}
         sx={{
           height: { xs: 190, md: 210 },
           overflow: 'hidden',
           position: 'relative',
           background: 'linear-gradient(135deg, #f0fdf4, #dcfce7)',
           flexShrink: 0,
+          cursor: 'pointer',
         }}
       >
         {product.image_url && !imgErr ? (
@@ -237,6 +240,7 @@ const Products: React.FC = () => {
   });
   const [searchParams] = useSearchParams();
   const location = useLocation();
+  const navigate = useNavigate();
   const isAdminContext = location.pathname.startsWith('/adddmin');
   const { items, total, itemCount, addItem, updateQuantity, clearCart, minOrderValue } = useCart();
 
@@ -560,6 +564,7 @@ const Products: React.FC = () => {
                   cartQty={getQty(p._id)}
                   onInc={prod => updateQuantity(prod._id, getQty(prod._id) + 1)}
                   onDec={id => updateQuantity(id, getQty(id) - 1)}
+                  onNavigate={id => navigate(`/products/${id}`)}
                   delay={i * 50}
                 />
               </Grid>
