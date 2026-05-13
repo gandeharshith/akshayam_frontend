@@ -319,7 +319,7 @@ const Home: React.FC = () => {
       {/* ═══ HERO ═══ */}
       <Box sx={{
         position: 'relative', overflow: 'hidden',
-        background: 'linear-gradient(135deg,#0d4a1e 0%,#1a6b2e 40%,#2d9e4a 80%,#3db85a 100%)',
+        background: 'linear-gradient(135deg,#1a7a35 0%,#2d9e4a 40%,#3db85a 80%,#52cc6e 100%)',
         pt: { xs: 6, md: 10 }, pb: { xs: 8, md: 12 },
         '&::before': { content: '""', position: 'absolute', top: -100, right: -100, width: { xs: 300, md: 500 }, height: { xs: 300, md: 500 }, borderRadius: '50%', background: 'radial-gradient(circle,rgba(255,255,255,0.06) 0%,transparent 70%)', pointerEvents: 'none' },
         '&::after': { content: '""', position: 'absolute', bottom: -80, left: -80, width: { xs: 200, md: 350 }, height: { xs: 200, md: 350 }, borderRadius: '50%', background: 'radial-gradient(circle,rgba(240,165,0,0.08) 0%,transparent 70%)', pointerEvents: 'none' },
