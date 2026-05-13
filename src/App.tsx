@@ -110,15 +110,15 @@ const theme = createTheme({
   palette: {
     mode: 'light', // Always force light mode to prevent white-on-white issues on dark-mode devices
     primary: {
-      main: '#2e7d32', // Deeper green for better contrast
-      light: '#60ad5e',
-      dark: '#005005',
+      main: '#22c55e', // Light green
+      light: '#4ade80',
+      dark: '#16a34a',
       contrastText: '#ffffff',
     },
     secondary: {
-      main: '#66bb6a', // Lighter green
-      light: '#98ee99',
-      dark: '#338a3e',
+      main: '#4ade80', // Lighter green
+      light: '#86efac',
+      dark: '#22c55e',
     },
     background: {
       default: '#f8fffe',
@@ -207,9 +207,9 @@ const theme = createTheme({
           },
         },
         contained: {
-          boxShadow: '0 2px 8px rgba(46, 125, 50, 0.2)',
+          boxShadow: '0 2px 8px rgba(34, 197, 94, 0.2)',
           '&:hover': {
-            boxShadow: '0 4px 16px rgba(46, 125, 50, 0.3)',
+            boxShadow: '0 4px 16px rgba(34, 197, 94, 0.3)',
           },
         },
       },
@@ -242,7 +242,7 @@ const theme = createTheme({
           '& .MuiOutlinedInput-root': {
             borderRadius: 12,
             '&:hover .MuiOutlinedInput-notchedOutline': {
-              borderColor: '#66bb6a',
+              borderColor: '#4ade80',
             },
           },
         },
