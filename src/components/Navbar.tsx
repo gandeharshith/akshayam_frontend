@@ -27,7 +27,8 @@ import {
   ArrowForward,
   Spa,
   Logout as LogoutIcon,
-  AccountCircle
+  AccountCircle,
+  Autorenew as SubscribeIcon
 } from '@mui/icons-material';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { useCart } from '../contexts/CartContext';
@@ -61,11 +62,12 @@ const Navbar: React.FC = () => {
   }, [location.pathname]);
 
   const menuItems = [
-    { text: 'Home',            path: '/',          icon: <HomeIcon fontSize="small" />,   emoji: '🏠' },
-    { text: 'About',           path: '/about',     icon: <InfoIcon fontSize="small" />,   emoji: '🌿' },
-    { text: 'Products',        path: '/products',  icon: <StoreIcon fontSize="small" />,  emoji: '🛒' },
-    { text: 'Healthy Recipes', path: '/recipes',   icon: <RecipesIcon fontSize="small" />,emoji: '🥗' },
-    { text: 'My Orders',       path: '/my-orders', icon: <OrdersIcon fontSize="small" />, emoji: '📦' },
+    { text: 'Home',            path: '/',               icon: <HomeIcon fontSize="small" />,      emoji: '🏠' },
+    { text: 'About',           path: '/about',          icon: <InfoIcon fontSize="small" />,      emoji: '🌿' },
+    { text: 'Products',        path: '/products',       icon: <StoreIcon fontSize="small" />,     emoji: '🛒' },
+    { text: 'Healthy Recipes', path: '/recipes',        icon: <RecipesIcon fontSize="small" />,   emoji: '🥗' },
+    { text: 'My Orders',       path: '/my-orders',      icon: <OrdersIcon fontSize="small" />,    emoji: '📦' },
+    { text: 'Subscribe',       path: '/subscriptions',  icon: <SubscribeIcon fontSize="small" />, emoji: '🔄' },
   ];
 
   const handleCartClick = async () => {

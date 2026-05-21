@@ -252,6 +252,39 @@ export const ordersAPI = {
   }
 };
 
+// Subscriptions API
+export const subscriptionsAPI = {
+  create: async (data: {
+    email: string; password: string;
+    user_name: string; user_phone: string; user_address: string;
+    items: { product_id: string; product_name: string; quantity: number; price: number }[];
+    day_of_week: number; notes?: string;
+  }) => {
+    const response = await api.post('/subscriptions', data);
+    return response.data;
+  },
+
+  getMy: async (email: string, password: string) => {
+    const response = await api.post('/subscriptions/my', { email, password });
+    return response.data;
+  },
+
+  update: async (
+    id: string,
+    updates: Partial<{ user_name: string; user_phone: string; user_address: string; day_of_week: number; active: boolean; notes: string; items: any[] }>,
+    email: string,
+    password: string
+  ) => {
+    const response = await api.put(`/subscriptions/${id}`, { ...updates, email, password });
+    return response.data;
+  },
+
+  cancel: async (id: string, email: string, password: string) => {
+    const response = await api.delete(`/subscriptions/${id}`, { data: { email, password } });
+    return response.data;
+  },
+};
+
 // User API
 export const userAPI = {
   login: async (credentials: UserLogin): Promise<{ message: string; user_id: string }> => {

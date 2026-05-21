@@ -9,6 +9,7 @@ import {
 } from '@mui/icons-material';
 import { useUserAuth } from '../contexts/UserAuthContext';
 import { Order } from '../types';
+import { formatDateIST } from '../utils/dateFormat';
 
 const statusConfig: Record<string, { label: string; color: string; bg: string; border: string; icon: React.ReactNode }> = {
   pending:    { label: 'Pending',    color: '#d97706', bg: '#fef3c7', border: '#fcd34d', icon: <HourglassEmpty sx={{ fontSize: '0.9rem' }} /> },
@@ -22,7 +23,7 @@ const statusConfig: Record<string, { label: string; color: string; bg: string; b
 const OrderCard: React.FC<{ order: Order }> = ({ order }) => {
   const [expanded, setExpanded] = useState(false);
   const cfg = statusConfig[order.status?.toLowerCase()] || statusConfig.pending;
-  const date = new Date(order.created_at).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' });
+  const date = formatDateIST(order.created_at);
 
   return (
     <Box sx={{ background: 'white', borderRadius: '20px', border: '1px solid rgba(0,0,0,0.06)', boxShadow: '0 2px 12px rgba(0,0,0,0.05)', overflow: 'hidden', mb: 2, transition: 'all 0.3s ease', '&:hover': { boxShadow: '0 8px 24px rgba(0,0,0,0.08)', borderColor: 'rgba(21,128,61,0.1)' } }}>

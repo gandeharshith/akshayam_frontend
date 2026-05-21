@@ -75,6 +75,7 @@ import {
   contactAPI,
   systemSettingsAPI
 } from '../services/api';
+import { formatDateTimeIST } from '../utils/dateFormat';
 import {
   Category,
   Product,
@@ -127,15 +128,7 @@ const SortableCategory: React.FC<SortableCategoryProps> = ({
     opacity: isDragging ? 0.5 : 1,
   };
 
-  const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString('en-IN', {
-      year: 'numeric',
-      month: 'short',
-      day: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit'
-    });
-  };
+  const formatDate = formatDateTimeIST;
 
   if (isMobile) {
     return (
@@ -1178,15 +1171,7 @@ const Admin: React.FC = () => {
     setContentDialogOpen(true);
   };
 
-  const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString('en-IN', {
-      year: 'numeric',
-      month: 'short',
-      day: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit'
-    });
-  };
+  const formatDate = formatDateTimeIST;
 
   const getStatusColor = (status: string) => {
     switch (status.toLowerCase()) {

@@ -7,7 +7,7 @@ import {
 import {
   Add, Remove, ShoppingCart, ArrowBack, CheckCircle,
   LocalShipping, Verified, EmojiNature, Star,
-  NavigateNext, Share
+  NavigateNext, Share, Autorenew as SubscribeIcon
 } from '@mui/icons-material';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { productsAPI, categoriesAPI } from '../services/api';
@@ -404,6 +404,34 @@ const ProductDetail: React.FC = () => {
                     {addedAnim ? 'Added to Cart!' : 'Add to Cart'}
                   </Button>
                 )}
+
+                {/* Subscribe Weekly button */}
+                <Button
+                  fullWidth
+                  variant="outlined"
+                  startIcon={<SubscribeIcon />}
+                  onClick={() => {
+                    const params = new URLSearchParams({
+                      product_id: product._id || '',
+                      product_name: product.name,
+                      price: String(product.price),
+                    });
+                    navigate(`/subscriptions?${params.toString()}`);
+                  }}
+                  sx={{
+                    borderColor: '#7c3aed',
+                    color: '#7c3aed',
+                    fontWeight: 700,
+                    py: 1.5,
+                    borderRadius: '16px',
+                    textTransform: 'none',
+                    fontSize: '0.95rem',
+                    background: 'rgba(124,58,237,0.04)',
+                    '&:hover': { borderColor: '#6d28d9', color: '#6d28d9', background: 'rgba(124,58,237,0.08)' },
+                  }}
+                >
+                  Subscribe Weekly 🔄
+                </Button>
 
                 <Button
                   fullWidth

@@ -15,6 +15,7 @@ interface UserSession {
 interface UserAuthContextType {
   isLoggedIn: boolean;
   userEmail: string | null;
+  userPassword: string | null;  // exposed so other pages can reuse session credentials
   orders: Order[];
   ordersLoading: boolean;
   ordersError: string;
@@ -109,6 +110,7 @@ export const UserAuthProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       value={{
         isLoggedIn: !!session,
         userEmail: session?.email ?? null,
+        userPassword: session?.password ?? null,
         orders,
         ordersLoading,
         ordersError,
