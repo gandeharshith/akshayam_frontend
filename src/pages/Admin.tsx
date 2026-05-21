@@ -73,7 +73,8 @@ import {
   ordersAPI,
   contentAPI,
   contactAPI,
-  systemSettingsAPI
+  systemSettingsAPI,
+  subscriptionsAPI
 } from '../services/api';
 import { formatDateTimeIST } from '../utils/dateFormat';
 import {
@@ -526,6 +527,11 @@ const Admin: React.FC = () => {
   const [settingsForm, setSettingsForm] = useState({
     min_order_value: 500
   });
+
+  // Subscriptions state
+  const [adminSubscriptions, setAdminSubscriptions] = useState<any[]>([]);
+  const [subsLoading, setSubsLoading] = useState(false);
+  const [subsError, setSubsError] = useState('');
 
   // Order editing states
   const [editOrderItems, setEditOrderItems] = useState<any[]>([]);
@@ -1222,6 +1228,7 @@ const Admin: React.FC = () => {
             <Tab label={isMobile ? "Orders" : "Orders"} />
             <Tab label={isMobile ? "Analytics" : "Analytics"} />
             <Tab label={isMobile ? "Content" : "Content & Contact"} />
+            <Tab label={isMobile ? "Subs" : "Subscriptions"} />
           </Tabs>
         </Box>
 
@@ -2009,6 +2016,127 @@ const Admin: React.FC = () => {
                       {analyticsGroupBy !== 'product' && (
                         <TableCell align="right">{item.order_count || 0}</TableCell>
                       )}
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </TableContainer>
+          )}
+        </TabPanel>
+
+        {/* Subscriptions Tab */}
+        <TabPanel value={currentTab} index={6}>
+          <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2, flexWrap: 'wrap', gap: 1 }}>
+            <Typography variant={isMobile ? "h6" : "h5"}>User Subscriptions</Typography>
+            <Button
+              variant="outlined"
+              size={isMobile ? "large" : "medium"}
+              onClick={async () => {
+                setSubsLoading(true);
+                setSubsError('');
+                try {
+                  const data = await subscriptionsAPI.adminGetAll();
+                  setAdminSubscriptions(data);
+                } catch (e: any) {
+                  setSubsError('Failed to load subscriptions');
+                } finally {
+                  setSubsLoading(false);
+                }
+              }}
+            >
+              Refresh
+            </Button>
+          </Box>
+
+          {subsError && <Alert severity="error" sx={{ mb: 2 }}>{subsError}</Alert>}
+
+          {subsLoading ? (
+            <Box sx={{ display: 'flex', justifyContent: 'center', py: 4 }}>
+              <CircularProgress />
+            </Box>
+          ) : adminSubscriptions.length === 0 ? (
+            <Alert severity="info">
+              No subscriptions found. Click Refresh to load, or no users have subscribed yet.
+            </Alert>
+          ) : isMobile ? (
+            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+              {adminSubscriptions.map((sub: any) => (
+                <Card key={sub._id} elevation={2}>
+                  <CardContent>
+                    <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', mb: 1 }}>
+                      <Typography variant="h6" sx={{ fontSize: '1rem' }}>{sub.user_name}</Typography>
+                      <Chip
+                        label={sub.active ? 'Active' : 'Paused'}
+                        color={sub.active ? 'success' : 'default'}
+                        size="small"
+                      />
+                    </Box>
+                    <Typography variant="body2" color="text.secondary">{sub.user_email}</Typography>
+                    <Typography variant="body2" sx={{ mt: 1 }}><strong>Phone:</strong> {sub.user_phone}</Typography>
+                    <Typography variant="body2"><strong>Address:</strong> {sub.user_address}</Typography>
+                    <Typography variant="body2"><strong>Day:</strong> {sub.day_name}</Typography>
+                    <Typography variant="body2"><strong>Total:</strong> ₹{sub.total_amount?.toFixed(2)}</Typography>
+                    <Typography variant="body2"><strong>Items:</strong> {sub.items?.length} item(s)</Typography>
+                    {sub.last_order_placed_at && (
+                      <Typography variant="body2"><strong>Last Order:</strong> {formatDate(sub.last_order_placed_at)}</Typography>
+                    )}
+                    <Typography variant="caption" color="text.secondary">Created: {formatDate(sub.created_at)}</Typography>
+                    <Box sx={{ mt: 1 }}>
+                      {sub.items?.map((item: any, idx: number) => (
+                        <Typography key={idx} variant="caption" display="block" color="text.secondary">
+                          • {item.product_name} × {item.quantity} @ ₹{item.price}
+                        </Typography>
+                      ))}
+                    </Box>
+                  </CardContent>
+                </Card>
+              ))}
+            </Box>
+          ) : (
+            <TableContainer component={Paper}>
+              <Table size="small">
+                <TableHead>
+                  <TableRow>
+                    <TableCell>Customer</TableCell>
+                    <TableCell>Email</TableCell>
+                    <TableCell>Phone</TableCell>
+                    <TableCell>Items</TableCell>
+                    <TableCell align="right">Total</TableCell>
+                    <TableCell>Day</TableCell>
+                    <TableCell>Status</TableCell>
+                    <TableCell>Last Order</TableCell>
+                    <TableCell>Created</TableCell>
+                  </TableRow>
+                </TableHead>
+                <TableBody>
+                  {adminSubscriptions.map((sub: any) => (
+                    <TableRow key={sub._id}>
+                      <TableCell>
+                        <Typography variant="body2" sx={{ fontWeight: 'medium' }}>{sub.user_name}</Typography>
+                        <Typography variant="caption" color="text.secondary">{sub.user_address}</Typography>
+                      </TableCell>
+                      <TableCell>{sub.user_email}</TableCell>
+                      <TableCell>{sub.user_phone}</TableCell>
+                      <TableCell>
+                        {sub.items?.map((item: any, idx: number) => (
+                          <Typography key={idx} variant="caption" display="block">
+                            {item.product_name} × {item.quantity}
+                          </Typography>
+                        ))}
+                      </TableCell>
+                      <TableCell align="right">₹{sub.total_amount?.toFixed(2)}</TableCell>
+                      <TableCell>{sub.day_name}</TableCell>
+                      <TableCell>
+                        <Chip
+                          label={sub.active ? 'Active' : 'Paused'}
+                          color={sub.active ? 'success' : 'default'}
+                          size="small"
+                        />
+                      </TableCell>
+                      <TableCell>
+                        {sub.last_order_placed_at ? formatDate(sub.last_order_placed_at) : '—'}
+                      </TableCell>
+                      <TableCell>{formatDate(sub.created_at)}</TableCell>
                     </TableRow>
                   ))}
                 </TableBody>

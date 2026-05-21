@@ -254,6 +254,10 @@ export const ordersAPI = {
 
 // Subscriptions API
 export const subscriptionsAPI = {
+  adminGetAll: async () => {
+    const response = await api.get('/admin/subscriptions');
+    return response.data;
+  },
   create: async (data: {
     email: string; password: string;
     user_name: string; user_phone: string; user_address: string;
