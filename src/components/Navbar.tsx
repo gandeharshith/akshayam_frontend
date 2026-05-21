@@ -11,7 +11,9 @@ import {
   useTheme,
   useMediaQuery,
   Snackbar,
-  Alert
+  Alert,
+  Tooltip,
+  Button
 } from '@mui/material';
 import {
   ShoppingCart,
@@ -23,15 +25,19 @@ import {
   Close as CloseIcon,
   MenuBook as RecipesIcon,
   ArrowForward,
-  Spa
+  Spa,
+  Logout as LogoutIcon,
+  AccountCircle
 } from '@mui/icons-material';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { useCart } from '../contexts/CartContext';
+import { useUserAuth } from '../contexts/UserAuthContext';
 import { stockAPI } from '../services/api';
 import { StockValidationItem } from '../types';
 
 const Navbar: React.FC = () => {
   const { itemCount, items, total, minOrderValue } = useCart();
+  const { isLoggedIn, userEmail, logout } = useUserAuth();
   const navigate = useNavigate();
   const location = useLocation();
   const theme = useTheme();
@@ -209,6 +215,55 @@ const Navbar: React.FC = () => {
                   </Box>
                 ))}
               </Box>
+            )}
+
+            {/* ── User Session Pill (Desktop) ── */}
+            {!isMobile && isLoggedIn && (
+              <Tooltip title={`Logged in as ${userEmail}`} arrow>
+                <Box
+                  sx={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 0.75,
+                    px: 1.5,
+                    py: 0.75,
+                    borderRadius: '10px',
+                    background: 'rgba(255,255,255,0.12)',
+                    border: '1px solid rgba(255,255,255,0.2)',
+                    ml: 0.5,
+                    maxWidth: 180,
+                  }}
+                >
+                  <AccountCircle sx={{ color: '#4ade80', fontSize: '1.1rem', flexShrink: 0 }} />
+                  <Typography
+                    sx={{
+                      color: 'rgba(255,255,255,0.9)',
+                      fontSize: '0.75rem',
+                      fontWeight: 600,
+                      overflow: 'hidden',
+                      textOverflow: 'ellipsis',
+                      whiteSpace: 'nowrap',
+                    }}
+                  >
+                    {userEmail}
+                  </Typography>
+                  <Tooltip title="Logout" arrow>
+                    <IconButton
+                      size="small"
+                      onClick={(e) => { e.stopPropagation(); logout(); }}
+                      sx={{
+                        color: 'rgba(255,255,255,0.7)',
+                        p: 0.25,
+                        ml: 0.25,
+                        borderRadius: '6px',
+                        '&:hover': { color: '#fca5a5', background: 'rgba(239,68,68,0.15)' },
+                      }}
+                    >
+                      <LogoutIcon sx={{ fontSize: '0.9rem' }} />
+                    </IconButton>
+                  </Tooltip>
+                </Box>
+              </Tooltip>
             )}
 
             {/* ── Cart Button ── */}
@@ -533,6 +588,50 @@ const Navbar: React.FC = () => {
             background: '#fafafa',
           }}
         >
+          {/* Logged-in user section in mobile drawer */}
+          {isLoggedIn && (
+            <Box
+              sx={{
+                mb: 2,
+                p: 1.5,
+                borderRadius: '14px',
+                background: 'linear-gradient(135deg, #f0fdf4, #dcfce7)',
+                border: '1px solid #bbf7d0',
+              }}
+            >
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1.25 }}>
+                <AccountCircle sx={{ color: '#15803d', fontSize: '1.2rem' }} />
+                <Box sx={{ flex: 1, minWidth: 0 }}>
+                  <Typography sx={{ fontSize: '0.7rem', fontWeight: 700, color: '#15803d', letterSpacing: '0.06em', textTransform: 'uppercase' }}>
+                    Signed In
+                  </Typography>
+                  <Typography sx={{ fontSize: '0.8rem', color: '#374151', fontWeight: 500, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                    {userEmail}
+                  </Typography>
+                </Box>
+              </Box>
+              <Button
+                fullWidth
+                size="small"
+                variant="outlined"
+                startIcon={<LogoutIcon sx={{ fontSize: '0.9rem' }} />}
+                onClick={() => { logout(); setMobileMenuOpen(false); }}
+                sx={{
+                  borderColor: '#fca5a5',
+                  color: '#dc2626',
+                  fontWeight: 600,
+                  borderRadius: '10px',
+                  textTransform: 'none',
+                  fontSize: '0.8rem',
+                  py: 0.75,
+                  '&:hover': { borderColor: '#dc2626', background: '#fef2f2' },
+                }}
+              >
+                Logout
+              </Button>
+            </Box>
+          )}
+
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
             <Box
               sx={{

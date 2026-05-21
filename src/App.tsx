@@ -3,6 +3,7 @@ import { BrowserRouter as Router, Routes, Route, useLocation } from 'react-route
 import { ThemeProvider, createTheme } from '@mui/material/styles';
 import { CssBaseline, Snackbar, Alert, Box, CircularProgress, Typography } from '@mui/material';
 import { CartProvider, useCart } from './contexts/CartContext';
+import { UserAuthProvider } from './contexts/UserAuthContext';
 import './services/keepAlive'; // Import keep-alive service to auto-start it
 import Navbar from './components/Navbar';
 import Footer from './components/Footer';
@@ -264,7 +265,9 @@ function App() {
     <ThemeProvider theme={theme}>
       <CssBaseline />
       <CartProvider>
-        <AppContent />
+        <UserAuthProvider>
+          <AppContent />
+        </UserAuthProvider>
       </CartProvider>
     </ThemeProvider>
   );

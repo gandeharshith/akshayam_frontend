@@ -3,8 +3,11 @@ import {
   Container, Typography, Box, Grid, Button, TextField,
   CircularProgress, Alert, Chip, Divider, IconButton, Collapse
 } from '@mui/material';
-import { ExpandMore, ExpandLess, LocalShipping, CheckCircle, HourglassEmpty, Cancel, Search, Receipt } from '@mui/icons-material';
-import { ordersAPI } from '../services/api';
+import {
+  ExpandMore, ExpandLess, LocalShipping, CheckCircle,
+  HourglassEmpty, Cancel, Search, Receipt, Logout, Refresh
+} from '@mui/icons-material';
+import { useUserAuth } from '../contexts/UserAuthContext';
 import { Order } from '../types';
 
 const statusConfig: Record<string, { label: string; color: string; bg: string; border: string; icon: React.ReactNode }> = {
@@ -98,22 +101,175 @@ const OrderCard: React.FC<{ order: Order }> = ({ order }) => {
   );
 };
 
-const MyOrders: React.FC = () => {
+/* ─────────────────────────────────────────────
+   Login Form (shown when user is not logged in)
+───────────────────────────────────────────── */
+const LoginForm: React.FC = () => {
+  const { login } = useUserAuth();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [orders, setOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
-  const [fetched, setFetched] = useState(false);
 
-  const handleFetch = async () => {
+  const handleLogin = async () => {
     if (!email || !password) { setError('Please enter your email and password.'); return; }
-    setLoading(true); setError('');
+    setLoading(true);
+    setError('');
     try {
-      const data = await ordersAPI.getUserOrders(email, password);
-      setOrders(data); setFetched(true);
-    } catch { setError('Invalid credentials or no orders found.'); } finally { setLoading(false); }
+      await login(email, password);
+    } catch (err: any) {
+      setError(err.message || 'Invalid credentials or no orders found.');
+    } finally {
+      setLoading(false);
+    }
   };
+
+  return (
+    <Box sx={{ background: 'white', borderRadius: '24px', border: '1px solid rgba(0,0,0,0.06)', boxShadow: '0 4px 24px rgba(0,0,0,0.07)', p: { xs: 3, md: 5 }, mb: 4, maxWidth: 480, mx: 'auto' }}>
+      <Box sx={{ textAlign: 'center', mb: 3 }}>
+        <Box sx={{ width: 56, height: 56, borderRadius: '16px', background: 'linear-gradient(135deg,#f0fdf4,#dcfce7)', border: '1px solid #bbf7d0', display: 'flex', alignItems: 'center', justifyContent: 'center', mx: 'auto', mb: 2 }}>
+          <Receipt sx={{ color: '#15803d', fontSize: '1.5rem' }} />
+        </Box>
+        <Typography sx={{ fontWeight: 700, fontSize: '1.2rem', color: '#18181b', mb: 0.5 }}>View Your Orders</Typography>
+        <Typography sx={{ fontSize: '0.875rem', color: '#71717a' }}>
+          Enter your credentials to access your order history.
+          <br />
+          <Typography component="span" sx={{ fontSize: '0.8rem', color: '#a1a1aa' }}>
+            You'll stay logged in for 3 months.
+          </Typography>
+        </Typography>
+      </Box>
+
+      {error && (
+        <Alert severity="error" sx={{ borderRadius: '12px', mb: 2.5, fontSize: '0.875rem' }} onClose={() => setError('')}>
+          {error}
+        </Alert>
+      )}
+
+      <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+        <TextField
+          fullWidth
+          label="Email Address"
+          type="email"
+          value={email}
+          onChange={e => setEmail(e.target.value)}
+          onKeyDown={e => e.key === 'Enter' && handleLogin()}
+          sx={{ '& .MuiOutlinedInput-root': { borderRadius: '12px', '&.Mui-focused fieldset': { borderColor: '#15803d', borderWidth: '1.5px' } }, '& .MuiInputLabel-root.Mui-focused': { color: '#15803d' } }}
+        />
+        <TextField
+          fullWidth
+          label="Password"
+          type="password"
+          value={password}
+          onChange={e => setPassword(e.target.value)}
+          onKeyDown={e => e.key === 'Enter' && handleLogin()}
+          sx={{ '& .MuiOutlinedInput-root': { borderRadius: '12px', '&.Mui-focused fieldset': { borderColor: '#15803d', borderWidth: '1.5px' } }, '& .MuiInputLabel-root.Mui-focused': { color: '#15803d' } }}
+        />
+        <Button
+          fullWidth
+          variant="contained"
+          onClick={handleLogin}
+          disabled={loading}
+          startIcon={loading ? <CircularProgress size={18} color="inherit" /> : <Search />}
+          sx={{ background: 'linear-gradient(135deg,#15803d,#22c55e)', color: 'white', fontWeight: 700, py: 1.75, borderRadius: '14px', textTransform: 'none', fontSize: '1rem', boxShadow: '0 4px 16px rgba(21,128,61,0.3)', '&:hover': { background: 'linear-gradient(135deg,#14532d,#15803d)' }, '&.Mui-disabled': { background: '#e4e4e7', color: '#a1a1aa' } }}
+        >
+          {loading ? 'Signing in…' : 'View My Orders'}
+        </Button>
+      </Box>
+    </Box>
+  );
+};
+
+/* ─────────────────────────────────────────────
+   Orders List (shown when user is logged in)
+───────────────────────────────────────────── */
+const OrdersList: React.FC = () => {
+  const { userEmail, orders, ordersLoading, ordersError, logout, refreshOrders } = useUserAuth();
+  const [refreshing, setRefreshing] = useState(false);
+
+  const handleRefresh = async () => {
+    setRefreshing(true);
+    await refreshOrders();
+    setRefreshing(false);
+  };
+
+  return (
+    <Box>
+      {/* Header bar */}
+      <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 3, flexWrap: 'wrap', gap: 1 }}>
+        <Box>
+          <Typography sx={{ fontWeight: 700, fontSize: '1.1rem', color: '#18181b' }}>
+            {ordersLoading
+              ? 'Loading orders…'
+              : `${orders.length} Order${orders.length !== 1 ? 's' : ''} Found`}
+          </Typography>
+          <Typography sx={{ fontSize: '0.8rem', color: '#71717a' }}>{userEmail}</Typography>
+        </Box>
+
+        <Box sx={{ display: 'flex', gap: 1 }}>
+          {/* Refresh button */}
+          <Button
+            size="small"
+            variant="outlined"
+            onClick={handleRefresh}
+            disabled={refreshing || ordersLoading}
+            startIcon={refreshing ? <CircularProgress size={14} color="inherit" /> : <Refresh sx={{ fontSize: '1rem' }} />}
+            sx={{ borderColor: 'rgba(0,0,0,0.12)', color: '#52525b', fontWeight: 600, borderRadius: '10px', textTransform: 'none', fontSize: '0.8rem', '&:hover': { borderColor: '#15803d', color: '#15803d', background: '#f0fdf4' } }}
+          >
+            Refresh
+          </Button>
+
+          {/* Logout button */}
+          <Button
+            size="small"
+            variant="outlined"
+            onClick={logout}
+            startIcon={<Logout sx={{ fontSize: '1rem' }} />}
+            sx={{ borderColor: '#fecaca', color: '#dc2626', fontWeight: 600, borderRadius: '10px', textTransform: 'none', fontSize: '0.8rem', '&:hover': { borderColor: '#dc2626', background: '#fef2f2' } }}
+          >
+            Logout
+          </Button>
+        </Box>
+      </Box>
+
+      {ordersError && (
+        <Alert severity="error" sx={{ borderRadius: '12px', mb: 2 }}>{ordersError}</Alert>
+      )}
+
+      {/* Loading skeleton */}
+      {ordersLoading && (
+        <Box sx={{ display: 'flex', justifyContent: 'center', py: 8 }}>
+          <CircularProgress sx={{ color: '#15803d' }} />
+        </Box>
+      )}
+
+      {/* Empty state */}
+      {!ordersLoading && orders.length === 0 && !ordersError && (
+        <Box sx={{ textAlign: 'center', py: { xs: 6, md: 8 }, background: 'white', borderRadius: '20px', border: '1px solid rgba(0,0,0,0.06)' }}>
+          <Box sx={{ fontSize: '3.5rem', mb: 2 }}>📦</Box>
+          <Typography sx={{ fontWeight: 700, fontSize: '1.2rem', color: '#18181b', mb: 1 }}>No orders yet</Typography>
+          <Typography sx={{ color: '#71717a', fontSize: '0.9rem', mb: 3 }}>You haven't placed any orders with this account.</Typography>
+          <Button
+            variant="contained"
+            href="/products"
+            sx={{ background: 'linear-gradient(135deg,#15803d,#22c55e)', color: 'white', fontWeight: 700, px: 4, py: 1.5, borderRadius: '14px', textTransform: 'none', boxShadow: '0 4px 16px rgba(21,128,61,0.3)', '&:hover': { background: 'linear-gradient(135deg,#14532d,#15803d)' } }}
+          >
+            Start Shopping
+          </Button>
+        </Box>
+      )}
+
+      {/* Orders */}
+      {!ordersLoading && orders.map(order => <OrderCard key={order._id} order={order} />)}
+    </Box>
+  );
+};
+
+/* ─────────────────────────────────────────────
+   Main Page
+───────────────────────────────────────────── */
+const MyOrders: React.FC = () => {
+  const { isLoggedIn } = useUserAuth();
 
   return (
     <Box sx={{ background: '#fafafa', minHeight: '100vh' }}>
@@ -133,67 +289,7 @@ const MyOrders: React.FC = () => {
       </Box>
 
       <Container maxWidth="md" sx={{ px: { xs: 2, md: 3 }, py: { xs: 3, md: 5 } }}>
-        {/* Login card */}
-        {!fetched && (
-          <Box sx={{ background: 'white', borderRadius: '24px', border: '1px solid rgba(0,0,0,0.06)', boxShadow: '0 4px 24px rgba(0,0,0,0.07)', p: { xs: 3, md: 5 }, mb: 4, maxWidth: 480, mx: 'auto' }}>
-            <Box sx={{ textAlign: 'center', mb: 3 }}>
-              <Box sx={{ width: 56, height: 56, borderRadius: '16px', background: 'linear-gradient(135deg,#f0fdf4,#dcfce7)', border: '1px solid #bbf7d0', display: 'flex', alignItems: 'center', justifyContent: 'center', mx: 'auto', mb: 2 }}>
-                <Receipt sx={{ color: '#15803d', fontSize: '1.5rem' }} />
-              </Box>
-              <Typography sx={{ fontWeight: 700, fontSize: '1.2rem', color: '#18181b', mb: 0.5 }}>View Your Orders</Typography>
-              <Typography sx={{ fontSize: '0.875rem', color: '#71717a' }}>Enter your credentials to access your order history</Typography>
-            </Box>
-
-            {error && <Alert severity="error" sx={{ borderRadius: '12px', mb: 2.5, fontSize: '0.875rem' }} onClose={() => setError('')}>{error}</Alert>}
-
-            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-              <TextField fullWidth label="Email Address" type="email" value={email} onChange={e => setEmail(e.target.value)}
-                onKeyDown={e => e.key === 'Enter' && handleFetch()}
-                sx={{ '& .MuiOutlinedInput-root': { borderRadius: '12px', '&.Mui-focused fieldset': { borderColor: '#15803d', borderWidth: '1.5px' } }, '& .MuiInputLabel-root.Mui-focused': { color: '#15803d' } }} />
-              <TextField fullWidth label="Password" type="password" value={password} onChange={e => setPassword(e.target.value)}
-                onKeyDown={e => e.key === 'Enter' && handleFetch()}
-                sx={{ '& .MuiOutlinedInput-root': { borderRadius: '12px', '&.Mui-focused fieldset': { borderColor: '#15803d', borderWidth: '1.5px' } }, '& .MuiInputLabel-root.Mui-focused': { color: '#15803d' } }} />
-              <Button fullWidth variant="contained" onClick={handleFetch} disabled={loading} startIcon={loading ? <CircularProgress size={18} color="inherit" /> : <Search />}
-                sx={{ background: 'linear-gradient(135deg,#15803d,#22c55e)', color: 'white', fontWeight: 700, py: 1.75, borderRadius: '14px', textTransform: 'none', fontSize: '1rem', boxShadow: '0 4px 16px rgba(21,128,61,0.3)', '&:hover': { background: 'linear-gradient(135deg,#14532d,#15803d)' }, '&.Mui-disabled': { background: '#e4e4e7', color: '#a1a1aa' } }}>
-                {loading ? 'Loading...' : 'View My Orders'}
-              </Button>
-            </Box>
-          </Box>
-        )}
-
-        {/* Orders list */}
-        {fetched && (
-          <Box>
-            <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 3, flexWrap: 'wrap', gap: 1 }}>
-              <Box>
-                <Typography sx={{ fontWeight: 700, fontSize: '1.1rem', color: '#18181b' }}>
-                  {orders.length > 0 ? `${orders.length} Order${orders.length !== 1 ? 's' : ''} Found` : 'No Orders Found'}
-                </Typography>
-                <Typography sx={{ fontSize: '0.8rem', color: '#71717a' }}>{email}</Typography>
-              </Box>
-              <Button size="small" variant="outlined" onClick={() => { setFetched(false); setOrders([]); setEmail(''); setPassword(''); }}
-                sx={{ borderColor: 'rgba(0,0,0,0.12)', color: '#52525b', fontWeight: 600, borderRadius: '10px', textTransform: 'none', fontSize: '0.8rem', '&:hover': { borderColor: '#15803d', color: '#15803d', background: '#f0fdf4' } }}>
-                Switch Account
-              </Button>
-            </Box>
-
-            {error && <Alert severity="error" sx={{ borderRadius: '12px', mb: 2 }}>{error}</Alert>}
-
-            {orders.length === 0 ? (
-              <Box sx={{ textAlign: 'center', py: { xs: 6, md: 8 }, background: 'white', borderRadius: '20px', border: '1px solid rgba(0,0,0,0.06)' }}>
-                <Box sx={{ fontSize: '3.5rem', mb: 2 }}>📦</Box>
-                <Typography sx={{ fontWeight: 700, fontSize: '1.2rem', color: '#18181b', mb: 1 }}>No orders yet</Typography>
-                <Typography sx={{ color: '#71717a', fontSize: '0.9rem', mb: 3 }}>You haven't placed any orders with this account.</Typography>
-                <Button variant="contained" href="/products"
-                  sx={{ background: 'linear-gradient(135deg,#15803d,#22c55e)', color: 'white', fontWeight: 700, px: 4, py: 1.5, borderRadius: '14px', textTransform: 'none', boxShadow: '0 4px 16px rgba(21,128,61,0.3)', '&:hover': { background: 'linear-gradient(135deg,#14532d,#15803d)' } }}>
-                  Start Shopping
-                </Button>
-              </Box>
-            ) : (
-              orders.map(order => <OrderCard key={order._id} order={order} />)
-            )}
-          </Box>
-        )}
+        {isLoggedIn ? <OrdersList /> : <LoginForm />}
       </Container>
     </Box>
   );
