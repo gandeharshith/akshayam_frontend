@@ -577,9 +577,7 @@ const Admin: React.FC = () => {
           order: index
         }));
         
-        console.log('Reordering categories:', reorderData);
         await categoriesAPI.reorder(reorderData);
-        console.log('Categories reordered successfully');
         
         // Don't fetch data again, keep the current optimistic update
       } catch (error: any) {
@@ -619,9 +617,7 @@ const Admin: React.FC = () => {
           order: index
         }));
         
-        console.log('Reordering products:', reorderData);
         await productsAPI.reorder(reorderData);
-        console.log('Products reordered successfully');
         
         // Don't fetch data again, keep the current optimistic update
       } catch (error: any) {
@@ -654,8 +650,6 @@ const Admin: React.FC = () => {
         contentAPI.getSection('delivery', 'schedule').catch(() => null)
       ]);
       
-      console.log('Fetched about data:', aboutData);
-      
       setCategories(categoriesData);
       setProducts(productsData);
       setRecipes(recipesData);
@@ -664,8 +658,6 @@ const Admin: React.FC = () => {
       setHomeContent(homeData);
       setAboutContent(aboutData);
       setDeliveryContent(deliveryData);
-      
-      console.log('About content state should be updated to:', aboutData);
       
       // Load system settings
       await fetchSystemSettings();
@@ -735,10 +727,10 @@ const Admin: React.FC = () => {
       await systemSettingsAPI.update('minimum_order_value', settingsForm.min_order_value, 'Minimum order value required for checkout');
       setMinOrderValue(settingsForm.min_order_value);
       setSettingsDialogOpen(false);
-      alert('Minimum order value updated successfully!');
     } catch (err) {
       console.error('Failed to update system settings:', err);
-      alert('Failed to update minimum order value. Please try again.');
+      setError('Failed to update minimum order value. Please try again.');
+      setTimeout(() => setError(''), 5000);
     } finally {
       setSettingsLoading(false);
     }
@@ -1170,10 +1162,8 @@ const Admin: React.FC = () => {
   };
 
   const editContent = (content: Content) => {
-    console.log('editContent called with:', content);
     setEditingContent(content);
     setContentForm({ title: content.title, content: content.content });
-    console.log('contentForm set to:', { title: content.title, content: content.content });
     setContentDialogOpen(true);
   };
 

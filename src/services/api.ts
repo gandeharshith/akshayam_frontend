@@ -33,6 +33,22 @@ api.interceptors.request.use((config) => {
   return config;
 });
 
+// Handle 401 responses — clear stale token and redirect to admin login
+api.interceptors.response.use(
+  (response) => response,
+  (error) => {
+    if (error.response?.status === 401) {
+      const isAdminRoute = window.location.pathname.startsWith('/adddmin');
+      if (isAdminRoute) {
+        localStorage.removeItem('admin_token');
+        localStorage.removeItem('admin_user');
+        window.location.href = '/adddmin/login';
+      }
+    }
+    return Promise.reject(error);
+  }
+);
+
 // Auth API
 export const authAPI = {
   login: async (credentials: LoginRequest): Promise<LoginResponse> => {

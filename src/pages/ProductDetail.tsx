@@ -468,7 +468,7 @@ const ProductDetail: React.FC = () => {
               <Box>
                 <Typography sx={{ fontWeight: 700, fontSize: '0.875rem', color: '#18181b' }}>Free Sunday Delivery</Typography>
                 <Typography sx={{ fontSize: '0.78rem', color: '#71717a', lineHeight: 1.4 }}>
-                  Orders placed before Saturday midnight are delivered fresh every Sunday
+                  Orders placed before Wednesday 6 PM are delivered fresh every Sunday
                 </Typography>
               </Box>
             </Box>
